@@ -1,4 +1,4 @@
-document.getElementById("registerform").addEventListener("submit", function(event){event.preventDefault();})
+document.getElementById("registerform").addEventListener("submit", function(event){event.preventDefault();
 
 const userdata={
     user_firstname: document.getElementById("Firstname").value,
@@ -25,4 +25,5 @@ fetch("http://localhost:8080/api/users/register",{
 })
 .catch(error => {
     console.error("Error:", error);
+});
 });
