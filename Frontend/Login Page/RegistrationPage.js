@@ -11,7 +11,7 @@ const userdata={
     password: document.getElementById("password").value
 }
 
-fetch("http://localhost:8080/api/Users/register",{
+fetch("http://localhost:8080/api/users/register",{
     method: "POST",
     headers: {
         "Content-Type": "application/json"
