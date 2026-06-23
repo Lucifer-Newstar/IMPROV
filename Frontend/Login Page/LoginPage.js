@@ -19,8 +19,11 @@ async function handleLogin() {
     const data = await response.json();
 
     if (data.status === "success") {
-        alert("✅ Login Successful!");
+        alert("Login Successful!");
     } else {
-        alert("❌ " + data.message);
+        alert("wrong username or password: " + data.message);
+    }
+    if(data.status === "success"){
+        window.location.href = "home.html";
     }
 }

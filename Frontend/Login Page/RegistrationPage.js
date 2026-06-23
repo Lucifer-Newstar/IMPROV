@@ -1,6 +1,8 @@
 document.getElementById("registerform").addEventListener("submit", function(event) {
     event.preventDefault();
-
+    handleRegistration(event);
+    });
+    async function handleRegistration(event){
     const userdata = {
         user_firstname: document.getElementById("Firstname").value,
         user_lastname: document.getElementById("Lastname").value,
@@ -25,4 +27,6 @@ document.getElementById("registerform").addEventListener("submit", function(even
     .catch(error => {
         console.error("Error:", error);
     });
-});
+    if (data.handleRegistration === "success"){
+        window.location.href = "LoginPage.html";
+    }
