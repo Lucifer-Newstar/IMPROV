@@ -23,10 +23,9 @@ document.getElementById("registerform").addEventListener("submit", function(even
     .then(data => {
         alert("Registered successfully!");
         console.log(data);
+        window.location.href = "LoginPage.html";
     })
     .catch(error => {
         console.error("Error:", error);
-    });
-    if (data.handleRegistration === "success"){
-        window.location.href = "LoginPage.html";
-    }
+        alert("Registeration failed. please try again.");
+         });
