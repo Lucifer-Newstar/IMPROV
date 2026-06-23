@@ -27,5 +27,6 @@ document.getElementById("registerform").addEventListener("submit", function(even
     })
     .catch(error => {
         console.error("Error:", error);
-        alert("Registeration failed. please try again.");
-         });
+        alert("Registration failed. Please try again.");
+    });
+}
