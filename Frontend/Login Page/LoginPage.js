@@ -20,10 +20,9 @@ async function handleLogin() {
 
     if (data.status === "success") {
         alert("Login Successful!");
+        window.location.href = "home.html";
     } else {
         alert("wrong username or password: " + data.message);
     }
-    if(data.status === "success"){
-        window.location.href = "home.html";
-    }
+   
 }
