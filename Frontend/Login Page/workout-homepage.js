@@ -8,6 +8,11 @@ const workoutPlans = {
 
 let selectedCategory = 'Full Body';
 
+function navigateToExercises(muscle) {
+  // Navigate to exercises detail page
+  window.location.href = 'exercises-detail.html?muscle=' + muscle;
+}
+
 function renderWorkoutPlan(category = 'Full Body') {
   selectedCategory = category;
   const planTitle = document.getElementById('plan-title');
@@ -35,6 +40,7 @@ function startWorkout() {
 
 window.selectCategory = selectCategory;
 window.startWorkout = startWorkout;
+window.navigateToExercises = navigateToExercises;
 
 window.addEventListener('DOMContentLoaded', () => {
   renderWorkoutPlan(selectedCategory);
