@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMPROV Workout Homepage</title>
+  <link rel="stylesheet" href="workout-homepage.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="#">IMPROV</a>
+      <nav class="topnav">
+        <a href="#">Home</a>
+        <a href="#">Workouts</a>
+        <a href="#">Profile</a>
+      </nav>
+    </header>
+
+    <main class="hero-layout">
+      <section class="hero-card">
+        <p class="eyebrow">Welcome back</p>
+        <h1>Track your next workout with style and focus.</h1>
+        <p class="hero-copy">Choose a muscle group, launch your training plan, and stay locked in with your personal dashboard.</p>
+
+        <div class="hero-actions">
+          <button class="primary-action" type="button" onclick="startWorkout()">Start Workout</button>
+        </div>
+
+        <div class="category-grid">
+          <button class="category-pill" type="button" onclick="navigateToExercises('chest')">Chest</button>
+          <button class="category-pill" type="button" onclick="navigateToExercises('biceps')">Arms</button>
+          <button class="category-pill" type="button" onclick="navigateToExercises('back')">Back</button>
+          <button class="category-pill" type="button" onclick="navigateToExercises('legs')">Legs</button>
+        </div>
+      </section>
+
+      <aside class="plan-card">
+        <div class="plan-header">
+          <span class="plan-badge">Training focus</span>
+          <h2 id="plan-title">Workout Plan</h2>
+        </div>
+        <ul id="workout-list" class="workout-list"></ul>
+
+        <div class="profile-panel">
+          <img class="avatar" src="thumb-350-378112.webp" alt="Athlete avatar">
+          <div class="profile-details">
+            <strong id="username-text">Guest Athlete</strong>
+            <span>Let's get stronger today.</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="workout-homepage.js"></script>
+</body>
+</html>

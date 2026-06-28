@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exercises - IMPROV Workouts</title>
+  <link rel="stylesheet" href="exercises-detail.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="workout-homepage.html">IMPROV</a>
+      <nav class="topnav">
+        <a href="workout-homepage.html">Home</a>
+        <a href="#">Workouts</a>
+        <a href="#">Profile</a>
+      </nav>
+    </header>
+
+    <main class="exercises-layout">
+      <!-- Sidebar with muscle group selection -->
+      <aside class="muscle-sidebar">
+        <div class="sidebar-header">
+          <h3>Muscle Groups</h3>
+        </div>
+        <div class="muscle-buttons">
+          <button class="muscle-btn" data-muscle="chest">Chest</button>
+          <button class="muscle-btn" data-muscle="back">Back</button>
+          <button class="muscle-btn" data-muscle="shoulders">Shoulders</button>
+          <button class="muscle-btn" data-muscle="biceps">Biceps</button>
+          <button class="muscle-btn" data-muscle="triceps">Triceps</button>
+          <button class="muscle-btn" data-muscle="forearms">Forearms</button>
+          <button class="muscle-btn" data-muscle="legs">Legs</button>
+          <button class="muscle-btn" data-muscle="abs">Abs</button>
+          <button class="muscle-btn" data-muscle="cardio">Cardio</button>
+        </div>
+      </aside>
+
+      <!-- Main exercises display -->
+      <section class="exercises-main">
+        <div class="exercises-header">
+          <h1 id="muscle-title">Select a Muscle Group</h1>
+          <p id="muscle-description" class="muscle-desc">Click on a muscle group to see targeted exercises</p>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Loading exercises...</p>
+        </div>
+
+        <div id="exercises-container" class="exercises-grid">
+          <!-- Exercises will be populated here -->
+        </div>
+
+        <div id="no-data" class="no-data" style="display: none;">
+          <p>No exercises found. Please try another muscle group.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="exercises-detail.js"></script>
+</body>
+</html>
