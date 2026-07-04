@@ -21,7 +21,7 @@ async function handleLogin() {
 
     if (data.id) {
         alert("Login Successful!");
-        window.location.href = "home.html";
+        window.location.href = "workout-homepage.html.html";
     } else {
         alert("Wrong username or password!");
     }
