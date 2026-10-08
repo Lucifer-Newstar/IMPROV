@@ -352,6 +352,14 @@ let currentMuscle = null;
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   setupMuscleButtons();
+
+  // The workout homepage deep-links here as exercises-detail.html?muscle=chest.
+  // Honour it: land on that muscle group instead of "Select a Muscle Group".
+  const muscle = new URLSearchParams(window.location.search).get('muscle');
+  if (muscle && exerciseDatabase[muscle]) {
+    const button = document.querySelector(`.muscle-btn[data-muscle="${muscle}"]`);
+    if (button) selectMuscle(muscle, button);
+  }
 });
 
 function setupMuscleButtons() {
@@ -379,34 +387,28 @@ function selectMuscle(muscle, buttonElement) {
 
 function displayExercises(muscle) {
   const container = document.getElementById('exercises-container');
-  const loading = document.getElementById('loading');
   const noData = document.getElementById('no-data');
   const title = document.getElementById('muscle-title');
   const description = document.getElementById('muscle-description');
-  
-  // Show loading
-  loading.style.display = 'flex';
+
   container.innerHTML = '';
   noData.style.display = 'none';
-  
+
   // Update header
   title.textContent = muscle.charAt(0).toUpperCase() + muscle.slice(1) + ' Exercises';
   description.textContent = muscleDescriptions[muscle] || 'Targeted exercises for this muscle group';
-  
-  // Simulate API call with timeout
-  setTimeout(() => {
-    loading.style.display = 'none';
-    
-    const exercises = exerciseDatabase[muscle] || [];
-    
-    if (exercises.length === 0) {
-      noData.style.display = 'block';
-      return;
-    }
-    
-    // Render exercises
-    container.innerHTML = exercises.map(exercise => createExerciseCard(exercise)).join('');
-  }, 500);
+
+  // The database is local, so render immediately. (This used to fake a 500ms
+  // "API call" with setTimeout, which just made the page feel broken.)
+  const exercises = exerciseDatabase[muscle] || [];
+
+  if (exercises.length === 0) {
+    noData.style.display = 'block';
+    return;
+  }
+
+  // Render exercises
+  container.innerHTML = exercises.map(exercise => createExerciseCard(exercise)).join('');
 }
 
 function createExerciseCard(exercise) {
@@ -441,33 +443,4 @@ function capitalizeWords(str) {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-}
-
-// Optional: Function to fetch from real API (e.g., exercisedb.p.rapidapi.com)
-async function fetchExercisesFromAPI(muscle) {
-  try {
-    // This is a template for using a real API
-    // Uncomment and add your API key to use
-    /*
-    const response = await fetch(
-      `https://exercisedb.p.rapidapi.com/exercises/target/${muscle}`,
-      {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': 'YOUR_API_KEY_HERE',
-          'X-RapidAPI-Host': 'exercisedb.p.rapidapi.com'
-        }
-      }
-    );
-    
-    if (!response.ok) throw new Error('API fetch failed');
-    return await response.json();
-    */
-    
-    // For now, return database exercises
-    return exerciseDatabase[muscle] || [];
-  } catch (error) {
-    console.error('Error fetching exercises:', error);
-    return exerciseDatabase[muscle] || [];
-  }
 }

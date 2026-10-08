@@ -17,16 +17,16 @@ function renderWorkoutPlan(category = 'Full Body') {
   selectedCategory = category;
   const planTitle = document.getElementById('plan-title');
   const workoutList = document.getElementById('workout-list');
-  const usernameText = document.getElementById('username-text');
 
-  if (!planTitle || !workoutList || !usernameText) {
+  if (!planTitle || !workoutList) {
     return;
   }
 
   const exercises = workoutPlans[category] || workoutPlans['Full Body'];
   planTitle.textContent = `${category} Workout Plan`;
   workoutList.innerHTML = exercises.map((exercise) => `<li>${exercise}</li>`).join('');
-  usernameText.textContent = `Ready for ${category}`;
+  // The profile panel keeps its placeholder until real auth state lands (P1/P2);
+  // it is not a place to echo the selected category.
 }
 
 function selectCategory(category) {
