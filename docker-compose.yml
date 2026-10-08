@@ -20,8 +20,11 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      # -p is quoted via MYSQL_PWD so the password never shows up in `ps`.
-      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      # MYSQL_PWD keeps the password off the command line (and out of `ps`).
+      # Single-quoted YAML: compose turns $$ into $, and the shell then sees
+      # MYSQL_PWD="$MYSQL_ROOT_PASSWORD" — properly quoted. (Escaped quotes
+      # would end up *inside* the password and the check would never pass.)
+      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -u root --silent']
       interval: 10s
       timeout: 5s
       start_period: 40s
@@ -29,6 +32,10 @@ services:
     networks: [backend]
 
   api:
+    # `image` names the built image so `docker compose pull` works for deploys
+    # (deploy.yml overrides it with API_IMAGE from GHCR). Locally it is just a
+    # tag on the image `docker compose up --build` produces.
+    image: ${API_IMAGE:-improv-api:local}
     build:
       context: ./Backend/ap
     restart: unless-stopped
@@ -45,6 +52,7 @@ services:
     networks: [backend]
 
   web:
+    image: ${WEB_IMAGE:-improv-web:local}
     build:
       context: ./Frontend
     restart: unless-stopped
