@@ -1,0 +1,18 @@
+# Build context for the web image. Only the static app is needed.
+node_modules/
+npm-debug.log*
+android/
+ios/
+src-tauri/target/
+src-tauri/gen/
+.gradle/
+*.apk
+*.aab
+*.ipa
+.env
+.env.*
+*.log
+.git/
+.gitignore
+Dockerfile
+.dockerignore

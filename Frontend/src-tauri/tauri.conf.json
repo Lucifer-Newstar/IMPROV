@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "IMPROV",
+  "version": "0.1.0",
+  "identifier": "com.improv.app",
+  "build": {
+    "frontendDist": "../Login Page"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "IMPROV",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 400,
+        "minHeight": 620,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "theme": "Dark",
+        "backgroundColor": "#090909"
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": null
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "nsis", "msi", "dmg", "app"],
+    "icon": [
+      "../Login Page/icons/icon-512.png",
+      "../Login Page/icons/icon-192.png",
+      "../Login Page/icons/apple-touch-icon.png"
+    ],
+    "category": "HealthAndFitness",
+    "shortDescription": "Gamified workout tracker",
+    "longDescription": "IMPROV turns real training into RPG progression. Track sets, weight and reps, earn XP from load, level up, and rank up from E to S."
+  }
+}

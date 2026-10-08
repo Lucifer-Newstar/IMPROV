@@ -1,0 +1,75 @@
+name: iOS build
+
+# Builds an unsigned iOS simulator .app so you can verify the Capacitor
+# project compiles without an Apple Developer account.
+#
+# Producing a real .ipa (TestFlight / App Store) additionally requires:
+#   * an Apple Developer account ($99/yr)
+#   * a distribution certificate + provisioning profile, exported as secrets
+#   * `xcodebuild -exportArchive` with an ExportOptions.plist
+# See docs/MOBILE_DESKTOP.md. Not wired up here on purpose — it is a paid,
+# account-bound step that cannot be faked in CI.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_build:
+        description: "Requires a macOS runner. Enable to actually build."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build simulator app
+    # macOS runners are 10x the cost of Linux on private repos. Remove this
+    # guard for public repos, where they are free.
+    if: ${{ inputs.run_build }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Capacitor CLI
+        working-directory: Frontend
+        run: npm install
+
+      - name: Add the iOS platform (first run only)
+        working-directory: Frontend
+        run: |
+          if [ ! -d ios ]; then
+            npx cap add ios
+          else
+            echo "ios/ already present"
+          fi
+
+      - name: Sync web assets into the native project
+        working-directory: Frontend
+        run: npx cap sync ios
+
+      - name: Build (unsigned, simulator)
+        working-directory: Frontend/ios/App
+        run: |
+          xcodebuild \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: ~/Library/Developer/Xcode/DerivedData/**/Logs/Build/*.xcactivitylog
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,14 @@
+# Build context for the api image — keep it small.
+target/
+build/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+README.md
+HELP.md
+*.log

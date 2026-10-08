@@ -1,0 +1,22 @@
+[package]
+name = "improv"
+version = "0.1.0"
+description = "IMPROV — gamified workout tracker (desktop)"
+authors = ["IMPROV"]
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Optional: secure token storage for the auth refresh token, so it is not
+# sitting in localStorage. Wire this up when real auth lands.
+# tauri-plugin-store = "2"
+
+[features]
+default = []

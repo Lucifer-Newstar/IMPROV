@@ -1,0 +1,196 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same branch cancels an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "26"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Compile + unit tests. No external services needed.
+  # ---------------------------------------------------------------------------
+  backend:
+    name: Backend (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Verify
+        working-directory: Backend/ap
+        run: mvn -B -ntp verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: Backend/ap/target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Static checks on the frontend. Cheap, and catches the two mistakes that
+  # actually bite: hardcoded backend URLs and a malformed PWA manifest.
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend (static checks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Required app-shell files must exist
+        working-directory: "Frontend/Login Page"
+        run: |
+          set -e
+          for f in LoginPage.html RegistrationPage.html workout-homepage.html \
+                   exercises-detail.html manifest.webmanifest sw.js config.js; do
+            test -f "$f" || { echo "::error file=Frontend/Login Page/$f::missing"; exit 1; }
+          done
+          echo "app shell OK"
+
+      - name: Manifest must be valid JSON with the required PWA fields
+        working-directory: "Frontend/Login Page"
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          m = json.load(open("manifest.webmanifest"))
+          required = ["name", "short_name", "start_url", "display", "icons"]
+          missing = [k for k in required if k not in m]
+          if missing:
+              sys.exit(f"manifest missing required keys: {missing}")
+          if m["display"] not in ("standalone", "fullscreen", "minimal-ui"):
+              sys.exit(f"display must be an installable mode, got {m['display']!r}")
+          if len(m["icons"]) < 2:
+              sys.exit("need at least a 192px and a 512px icon")
+          sizes = {i.get("sizes") for i in m["icons"]}
+          for want in ("192x192", "512x512"):
+              if want not in sizes:
+                  sys.exit(f"manifest is missing a {want} icon (found {sorted(sizes)})")
+          print("manifest OK:", m["name"])
+          PY
+
+      - name: No hardcoded backend origin in frontend JS
+        working-directory: "Frontend/Login Page"
+        run: |
+          # Same-origin only: nginx proxies /api to the backend. Any absolute
+          # localhost URL breaks every deploy. See docs/DEVOPS.md.
+          if grep -rnE 'https?://(localhost|127\.0\.0\.1):[0-9]+' --include='*.js' . ; then
+            echo "::error::hardcoded backend origin found - use config.js API_BASE instead"
+            exit 1
+          fi
+          echo "no hardcoded API origins"
+
+      - name: Syntax-check every JS file
+        run: |
+          set -e
+          find "Frontend/Login Page" -name '*.js' -print0 | while IFS= read -r -d '' f; do
+            node --check "$f" && echo "ok  $f"
+          done
+
+  # ---------------------------------------------------------------------------
+  # The real test: does the whole stack actually come up?
+  # Proves Dockerfiles, compose wiring, healthchecks, the nginx proxy and the
+  # Flyway migration all work together.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration (docker compose smoke test)
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Write CI .env
+        run: |
+          cat > .env <<'EOF'
+          DB_NAME=workoutapp
+          DB_USERNAME=improv
+          DB_PASSWORD=ci-only-not-a-real-secret
+          DB_ROOT_PASSWORD=ci-only-not-a-real-secret
+          HTTP_PORT=8080
+          TZ=UTC
+          EOF
+
+      - name: Build and start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the API healthcheck
+        run: |
+          set -e
+          CID=$(docker compose ps -q api)
+          for i in $(seq 1 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' "$CID" 2>/dev/null || echo starting)
+            echo "[$i] api health: $status"
+            [ "$status" = "healthy" ] && exit 0
+            [ "$status" = "unhealthy" ] && { echo "::error::api reported unhealthy"; exit 1; }
+            sleep 5
+          done
+          echo "::error::timed out waiting for api to become healthy"
+          exit 1
+
+      - name: Flyway must have applied the baseline migration
+        run: |
+          set -e
+          docker compose exec -T db mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
+            -e "SELECT version, description, success FROM flyway_schema_history;" \
+          || true
+          count=$(docker compose exec -T db mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
+            -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name IN ('users','flyway_schema_history');")
+          echo "expected tables present: $count"
+          [ "$count" -eq 2 ] || { echo "::error::expected users + flyway_schema_history"; exit 1; }
+        env:
+          DB_NAME: workoutapp
+          DB_USER: improv
+          DB_PASSWORD: ci-only-not-a-real-secret
+
+      - name: nginx must serve the app shell
+        run: |
+          set -e
+          curl -fsS http://localhost:8080/healthz
+          code=$(curl -s -o /tmp/page.html -w '%{http_code}' http://localhost:8080/)
+          echo "GET / -> $code"
+          [ "$code" = "200" ] || exit 1
+          grep -qi "gamified fitness" /tmp/page.html
+
+      - name: nginx must proxy /api to the backend
+        run: |
+          # NOTE: the backend currently answers a bad login with HTTP 500
+          # (RuntimeException in service.java). That is a tracked P0 bug. This
+          # step only asserts the *proxy* works — a 502/504 would mean nginx
+          # could not reach the API at all.
+          code=$(curl -s -o /tmp/api.out -w '%{http_code}' \
+            -X POST http://localhost:8080/api/Users/login \
+            -H 'Content-Type: application/json' -d '{"username":"ci","password":"ci"}')
+          echo "POST /api/Users/login -> $code"
+          cat /tmp/api.out || true
+          case "$code" in
+            502|504|000) echo "::error::nginx could not reach the API"; exit 1 ;;
+          esac
+          echo "proxy reachable"
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans

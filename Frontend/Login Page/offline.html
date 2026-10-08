@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Offline — IMPROV</title>
+  <link rel="stylesheet" href="workout-homepage.css">
+  <style>
+    .offline-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .offline-card {
+      max-width: 460px;
+      text-align: center;
+      padding: 44px 32px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .offline-mark {
+      font-size: 3rem;
+      line-height: 1;
+      color: var(--accent-red);
+      text-shadow: 0 0 24px rgba(255, 79, 91, 0.5);
+      margin-bottom: 18px;
+    }
+    .offline-card h1 {
+      margin: 0 0 12px;
+      font-size: 1.4rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--soft-white);
+    }
+    .offline-card p {
+      margin: 0 0 8px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .offline-status {
+      margin-top: 22px;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-red);
+    }
+    .offline-status[data-online="true"] { color: #4ade80; }
+  </style>
+</head>
+<body>
+  <main class="offline-shell">
+    <section class="offline-card">
+      <div class="offline-mark">&#9888;</div>
+      <h1>System Offline</h1>
+      <p>The System cannot reach the network, so your quests cannot be synced.</p>
+      <p>Reconnect and quest progress will resume from where you left off.</p>
+      <p class="offline-status" id="status" data-online="false">Connection lost</p>
+    </section>
+  </main>
+
+  <script>
+    // Reflect connectivity live so the user doesn't have to guess.
+    var status = document.getElementById('status');
+    function render() {
+      var online = navigator.onLine;
+      status.dataset.online = String(online);
+      status.textContent = online ? 'Connection restored — reloading' : 'Connection lost';
+      if (online) setTimeout(function () { window.location.reload(); }, 900);
+    }
+    window.addEventListener('online', render);
+    window.addEventListener('offline', render);
+    render();
+  </script>
+</body>
+</html>

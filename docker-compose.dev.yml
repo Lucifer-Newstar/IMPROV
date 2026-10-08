@@ -1,0 +1,21 @@
+# Development override.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Differences from the default stack:
+#   * MySQL is published on the host so you can point a GUI client at it
+#     (DBeaver / TablePlus / MySQL Workbench) on localhost:3306
+#   * The API is published directly on 8081 for hitting endpoints without nginx
+#   * The API runs the `dev` profile (verbose SQL logging, no strict validation)
+
+services:
+  db:
+    ports:
+      - "${DB_PORT:-3306}:3306"
+
+  api:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${API_PORT:-8081}:8080"

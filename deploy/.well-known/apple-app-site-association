@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "iOS Universal Links — serve at https://<your-host>/.well-known/apple-app-site-association",
+    "with Content-Type: application/json, NO file extension, and NO redirects.",
+    "",
+    "Replace TEAMID (10-character Apple Developer Team ID) and the bundle id,",
+    "then delete this _comment key. See docs/MOBILE_DESKTOP.md section 5."
+  ],
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.improv.app"],
+        "components": [
+          {
+            "/": "/*",
+            "comment": "Open all IMPROV paths in the app"
+          },
+          {
+            "/": "/api/*",
+            "exclude": true,
+            "comment": "Never intercept API calls"
+          }
+        ]
+      }
+    ]
+  }
+}

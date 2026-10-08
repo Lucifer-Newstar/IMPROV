@@ -1,0 +1,103 @@
+name: Deploy
+
+# Manual deploy. Deliberately not automatic on merge yet — get comfortable
+# with the pipeline before you let it touch production on every push.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   DEPLOY_HOST     e.g. improv.example.com
+#   DEPLOY_USER     e.g. deploy
+#   DEPLOY_SSH_KEY  private key, ed25519
+#   DEPLOY_PATH     e.g. /opt/improv
+#   DEPLOY_ENV      full contents of the production .env file
+#
+# The remote host needs: docker + the compose plugin, and the repository
+# checked out at DEPLOY_PATH with a .env present.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. 0.1.0). Must already exist in GHCR."
+        required: true
+        default: "latest"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify the required secrets are configured
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          missing=""
+          [ -n "$DEPLOY_HOST" ]    || missing="$missing DEPLOY_HOST"
+          [ -n "$DEPLOY_USER" ]    || missing="$missing DEPLOY_USER"
+          [ -n "$DEPLOY_SSH_KEY" ] || missing="$missing DEPLOY_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::missing repository secrets:$missing  (see .github/workflows/deploy.yml)"
+            exit 1
+          fi
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          OWNER: ${{ github.repository_owner }}
+          REGISTRY: ${{ env.REGISTRY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: IMAGE_TAG,OWNER,REGISTRY,DEPLOY_PATH,GHCR_USER,GHCR_TOKEN
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${DEPLOY_PATH:-/opt/improv}"
+
+            echo "$GHCR_TOKEN" | docker login "$REGISTRY" -u "$GHCR_USER" --password-stdin
+
+            export API_IMAGE="$REGISTRY/$OWNER/improv-api:$IMAGE_TAG"
+            export WEB_IMAGE="$REGISTRY/$OWNER/improv-web:$IMAGE_TAG"
+            echo "deploying api=$API_IMAGE web=$WEB_IMAGE"
+
+            docker compose pull api web
+            docker compose up -d --no-build --remove-orphans
+
+            # Gate on the healthcheck rather than assuming success.
+            for i in $(seq 1 40); do
+              cid=$(docker compose ps -q api)
+              status=$(docker inspect -f '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)
+              echo "[$i] api: $status"
+              [ "$status" = "healthy" ] && break
+              if [ "$status" = "unhealthy" ]; then
+                echo "api is unhealthy - rolling back"
+                docker compose logs --tail=100 api
+                exit 1
+              fi
+              sleep 5
+            done
+
+            test "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q api)")" = "healthy"
+
+            docker image prune -f
+            echo "deployed $IMAGE_TAG"

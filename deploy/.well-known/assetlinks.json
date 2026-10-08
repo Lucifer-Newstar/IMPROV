@@ -1,0 +1,22 @@
+[
+  {
+    "_comment": [
+      "Android App Links — serve this file at https://<your-host>/.well-known/assetlinks.json",
+      "with Content-Type: application/json and NO redirects.",
+      "",
+      "Replace package_name and sha256_cert_fingerprints, then delete this _comment key.",
+      "Get the fingerprint from your SIGNING keystore:",
+      "  keytool -list -v -keystore release.keystore -alias improv | grep SHA256",
+      "Note: the debug keystore produces a different fingerprint - do not ship that one.",
+      "See docs/MOBILE_DESKTOP.md section 4."
+    ],
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.improv.app",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_COLON_SEPARATED_SHA256_FINGERPRINT"
+      ]
+    }
+  }
+]

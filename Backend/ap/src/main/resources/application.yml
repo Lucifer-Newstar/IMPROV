@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: improv-api
+
+  # `dev` unless something explicitly says otherwise. docker-compose sets
+  # SPRING_PROFILES_ACTIVE=prod for the containerised stack.
+  profiles:
+    default: dev
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/workoutapp}
+    username: ${DB_USERNAME:improv}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 10000
+
+  jpa:
+    # Flyway owns the schema. Hibernate only ever checks that the entities and
+    # the database agree — it must never generate DDL outside a migration.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 25
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # A pre-Flyway developer database already has a `users` table. Without this,
+    # Flyway refuses to start on a non-empty schema. See docs/DEVOPS.md.
+    baseline-on-migrate: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  # Trust X-Forwarded-* from the nginx reverse proxy so redirects and links
+  # are built against the public origin, not the container hostname.
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    root: INFO

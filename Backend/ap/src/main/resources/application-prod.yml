@@ -1,0 +1,35 @@
+# Production profile — used by the docker-compose stack and any real deploy.
+#
+# Everything sensitive comes from the environment. There are no defaults for
+# credentials here: if DB_PASSWORD is missing the app should fail loudly at
+# startup rather than quietly connect somewhere unexpected.
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    root: INFO
+    wo.ap: INFO
+  # Logs go to stdout as the container contract requires. Collecting and
+  # shipping them is the platform's job, not the application's.
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Ingress must restrict this. See docs/DEVOPS.md.
+        include: health,info

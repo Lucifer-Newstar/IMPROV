@@ -1,0 +1,84 @@
+# ============================================================================
+# Secrets — never commit these
+# ============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# ============================================================================
+# Java / Maven
+# ============================================================================
+target/
+build/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+!**/src/**/target/
+!**/src/**/build/
+
+# ============================================================================
+# Node / frontend tooling
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+out/
+.vite/
+.next/
+.nuxt/
+
+# ============================================================================
+# Mobile (Capacitor) — the whole native project is generated, not tracked.
+# If you later need to commit native customisation, narrow these rules.
+# ============================================================================
+Frontend/android/
+Frontend/ios/
+.gradle/
+*.apk
+*.aab
+*.ipa
+
+# ============================================================================
+# Desktop (Tauri / Electron)
+# ============================================================================
+Frontend/src-tauri/target/
+Frontend/src-tauri/gen/
+
+# ============================================================================
+# IDE / editor
+# ============================================================================
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.factorypath
+.springBeans
+.sts4-cache
+.apt_generated
+nbproject/private/
+.nb-gradle/
+
+# ============================================================================
+# OS / misc
+# ============================================================================
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*~
+
+# Local overrides that must never be shared
+**/application-local.yml
+**/application-local.properties

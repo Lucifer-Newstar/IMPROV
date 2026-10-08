@@ -1,0 +1,63 @@
+# IMPROV — local / single-host stack
+#
+#   cp .env.example .env      # then edit the passwords
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# Frontend and API are served from one origin (nginx), so there is no CORS.
+
+name: improv
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-workoutapp}
+      MYSQL_USER: ${DB_USERNAME:-improv}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - copy .env.example to .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required - copy .env.example to .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      # -p is quoted via MYSQL_PWD so the password never shows up in `ps`.
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 10
+    networks: [backend]
+
+  api:
+    build:
+      context: ./Backend/ap
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://db:3306/${DB_NAME:-workoutapp}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME:-improv}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
+      TZ: ${TZ:-UTC}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+
+  web:
+    build:
+      context: ./Frontend
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [backend]
+
+volumes:
+  db-data:
+
+networks:
+  backend:
+    driver: bridge
