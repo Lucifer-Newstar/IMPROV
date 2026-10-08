@@ -4,7 +4,7 @@
 
 **Runs as a web app, an installable PWA, an Android app, an iOS app, and a desktop app for Windows / macOS / Linux — from one codebase.**
 
-> **Status: 🚧 pre-alpha.** The backend is a demo slice — authentication only. The progression engine (XP, quests, streaks, ranks) is specified and scheduled, not yet built. Infrastructure, packaging and CI are in place. See [`docs/PHASE_PLAN.md`](docs/PHASE_PLAN.md).
+> **Status: 🚧 pre-alpha.** The backend is a demo slice — authentication only. The progression engine (XP, quests, streaks, ranks) is specified and scheduled, not yet built. The P0 DevOps lane is complete: containers, CI/CD, PWA and native packaging are in place, and the stack runs end-to-end with one command. See [`docs/PHASE_PLAN.md`](docs/PHASE_PLAN.md).
 
 ---
 
@@ -115,6 +115,7 @@ IMPROV/
 │   ├── package.json                   # Capacitor scripts
 │   ├── src-tauri/                     # Tauri desktop shell
 │   └── Login Page/                    # the web app itself
+│       ├── index.html                 # entry point (redirects to LoginPage.html)
 │       ├── LoginPage.*                # login
 │       ├── RegistrationPage.*         # registration
 │       ├── workout-homepage.*         # home / quest board
@@ -201,14 +202,22 @@ Full task breakdown, exit criteria and the risk register:
 
 ## ⚠️ Security notice
 
-The current backend **is not safe to deploy as-is**:
+Fixed since the audit (details in
+[`docs/REFERENCE_ANALYSIS.md` §4](docs/REFERENCE_ANALYSIS.md)):
 
-- Passwords are stored in **plaintext** and returned in API responses
-- A database password was committed to git history and must be considered burned
-- Authentication failures return HTTP 500 instead of 401
+- ✅ The password field is no longer serialised in API responses
+- ✅ A bad login returns **401**, not 500; a duplicate username returns 409
+- ✅ The `@CrossOrigin(origins = "*")` wildcard is gone — one origin, no CORS
+- ✅ The committed database credential is out of the tree (it remains in git
+  history — treat it as burned and rotate it)
 
-All three are P0 items. See
-[`docs/REFERENCE_ANALYSIS.md` §4](docs/REFERENCE_ANALYSIS.md) for the full audit.
+**Still open (P0/P1, fullstack lane):**
+
+- Passwords are still stored and compared in **plaintext** — BCrypt + JWT is
+  the next task
+- There is no session or token yet — every endpoint is currently public
+
+The backend is **not safe to expose publicly** until those land.
 
 ---
 

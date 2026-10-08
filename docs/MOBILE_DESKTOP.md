@@ -33,6 +33,7 @@ app. Capacitor and Tauri exist for the cases where it isn't enough (see §6).
 ```
 Frontend/
 ├── Login Page/
+│   ├── index.html                   # entry point — redirects to LoginPage.html
 │   ├── manifest.webmanifest         # PWA identity, icons, shortcuts
 │   ├── sw.js                        # service worker
 │   ├── pwa.js                       # SW registration + install prompt
@@ -64,6 +65,12 @@ window.IMPROV.apiBase   // '/api' on web, 'https://your-host/api' when packaged
 **Before building any native package, change `PRODUCTION_API_ORIGIN` in
 `config.js` to your real deployed origin.** It ships as a placeholder and the
 code warns in the console if you forget.
+
+**Entry point:** Capacitor and Tauri both load `index.html` from the web
+directory — the Capacitor CLI refuses to sync without it — and nginx serves
+it for `/`. The real app starts at `LoginPage.html`, so `Login Page/index.html`
+is a small redirect shim that preserves the query string (`?muscle=chest`,
+the PWA's `?source=pwa`). Do not delete it.
 
 ---
 
@@ -125,6 +132,35 @@ Base64 it for GitHub Actions, and add the secrets named in
 ```bash
 base64 -w0 release.keystore    # -> ANDROID_KEYSTORE_BASE64
 ```
+
+CI wires signing automatically: the workflow appends a `signingConfigs` block
+to `app/build.gradle` that reads the `ANDROID_KEYSTORE_*` secrets (the
+Capacitor template ships without one). For a **local** signed build, add the
+same block to `android/app/build.gradle`:
+
+```gradle
+android {
+    signingConfigs {
+        release {
+            if (project.hasProperty('IMPROV_KEYSTORE')) {
+                storeFile file(project.property('IMPROV_KEYSTORE'))
+                storePassword project.property('IMPROV_KEYSTORE_PASSWORD')
+                keyAlias project.property('IMPROV_KEY_ALIAS')
+                keyPassword project.property('IMPROV_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (project.hasProperty('IMPROV_KEYSTORE')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+```
+
+with the four `IMPROV_KEY*` values in `android/gradle.properties`.
 
 > **If you lose this keystore you can never update that Play Store listing
 > again.** Back it up somewhere that isn't the repo. This is a real, permanent

@@ -1,6 +1,6 @@
 # IMPROV — Phase Plan
 
-> **Status:** planning · **Team:** 2 (fullstack dev + DevOps) · **Updated:** Oct 2026
+> **Status:** P0 DevOps lane complete · P0 fullstack lane in progress · **Team:** 2 (fullstack dev + DevOps) · **Updated:** Oct 2026
 > **Companion doc:** [`REFERENCE_ANALYSIS.md`](./REFERENCE_ANALYSIS.md) — the research this plan is built on.
 
 ---
@@ -35,7 +35,7 @@ Most of the category does the opposite. Fitness-RPG apps (Habitica, Fitness RPG,
 
 Full feature parity with the reference platform is a ~6-month project for two people. These are explicitly out of scope until the MVP ships:
 
-- ❌ Native iOS / Android apps (web/PWA covers it)
+- ❌ Store submission (Play / App Store). Capacitor + Tauri packaging is configured and CI-built, but shipping to the stores is post-MVP
 - ❌ GPS run tracking with audio cues
 - ❌ Progress photo journal
 - ❌ AI/LLM-generated coaching programs
@@ -171,13 +171,13 @@ Everything the UI shows is a `GROUP BY`, never a maintained counter:
 
 ## 7. Phase overview
 
-| Phase | Name | Duration | Outcome | Owner split |
-|---|---|---|---|---|
-| **P0** | Foundations & contracts | ~1 week | Repo can build, test and run end-to-end | Both |
-| **P1** | Core loop | ~3 weeks | XP, quests, streaks, levels, ranks working via API | Fullstack-heavy |
-| **P2** | Screens → **MVP SHIP** | ~3 weeks | **Live HTTPS URL with a working core loop** | Both |
-| **P3** | Real training | ~2 weeks | Weight/reps/RPE tracking — the differentiator | Fullstack-heavy |
-| **P4** | Social & seasons | ~2 weeks | Friends, leaderboards, guild bosses, seasons | Both |
+| Phase | Name | Duration | Outcome | Owner split | Status |
+|---|---|---|---|---|---|
+| **P0** | Foundations & contracts | ~1 week | Repo can build, test and run end-to-end | Both | 🟡 DevOps ✅ · fullstack 🟡 |
+| **P1** | Core loop | ~3 weeks | XP, quests, streaks, levels, ranks working via API | Fullstack-heavy | ⬜ not started |
+| **P2** | Screens → **MVP SHIP** | ~3 weeks | **Live HTTPS URL with a working core loop** | Both | ⬜ not started |
+| **P3** | Real training | ~2 weeks | Weight/reps/RPE tracking — the differentiator | Fullstack-heavy | ⬜ not started |
+| **P4** | Social & seasons | ~2 weeks | Friends, leaderboards, guild bosses, seasons | Both | ⬜ not started |
 
 Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is upside.**
 
@@ -191,34 +191,44 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 **Fullstack dev**
 
-- [ ] Rotate the committed MySQL password; scrub `application.properties`
+- [ ] Rotate the committed MySQL password on any real database (it is out of
+      the tree but still in git history — treat it as burned)
 - [ ] BCrypt password hashing; JWT access + refresh
-- [ ] DTOs so `password` never serialises in any response
-- [ ] Fix auth error contract: 401 for bad credentials, not 500 from `RuntimeException`
+- [x] DTOs so `password` never serialises in any response — done early via
+      `@JsonProperty(WRITE_ONLY)` on `User.password`; full DTOs land with P1
+- [x] Fix auth error contract: 401 for bad credentials, not 500 from
+      `RuntimeException` (plus 409 for a duplicate username)
 - [ ] `@Valid` + validation annotations; unique constraints on username & email
-- [ ] Fix functional bugs: `workout-homepage.html.html` double extension; `gender` null-crash; `confirm-password` never validated; height/weight `Long` vs decimal mismatch
-- [ ] Fix `ApApplicationTests` — it currently cannot pass without a live MySQL
+      (username is unique in V1; email is deliberately not yet — see the migration)
+- [x] Fix functional bugs: `workout-homepage.html.html` double extension; `gender`
+      null-crash; `confirm-password` never validated; height/weight `Long` vs
+      decimal mismatch; unhandled fetch rejections
+- [x] Fix `ApApplicationTests` — it previously could not pass without a live
+      MySQL (now runs on in-memory H2)
 - [ ] **Decide D10 (frontend framework)** and commit to it
 
 **DevOps**
 
-- [ ] `application-dev.yml` / `application-prod.yml`; every value via env var (Spring relaxed binding)
-- [ ] `.env` + `.env.example`, root `.gitignore`
-- [ ] Remove `localhost:8080` from all three frontend JS files
-- [ ] **nginx**: serve static + proxy `/api` → backend on one origin → CORS deleted
-- [ ] Backend **Dockerfile** — multi-stage Maven → JRE, layered jar, non-root, `HEALTHCHECK`
-- [ ] Frontend **Dockerfile** — build stage → nginx runtime
-- [ ] **`docker-compose.yml`** — mysql + api + web, healthchecks + `depends_on: service_healthy`
-- [ ] **Flyway** baseline migration, `ddl-auto=validate`
+- [x] `application-dev.yml` / `application-prod.yml`; every value via env var (Spring relaxed binding)
+- [x] `.env` + `.env.example`, root `.gitignore`
+- [x] Remove `localhost:8080` from all three frontend JS files
+- [x] **nginx**: serve static + proxy `/api` → backend on one origin → CORS deleted
+- [x] Backend **Dockerfile** — multi-stage Maven → JRE, layered jar, non-root, `HEALTHCHECK`
+- [x] Frontend **Dockerfile** — build stage → nginx runtime
+- [x] **`docker-compose.yml`** — mysql + api + web, healthchecks + `depends_on: service_healthy`
+- [x] **Flyway** baseline migration, `ddl-auto=validate`
 - [ ] `Clock` bean + Testcontainers integration test proving day-boundary logic across ≥3 timezones
-- [ ] GitHub Actions: PR → build + test, branch protection on `main`
+- [x] GitHub Actions: PR → build + test (CI green is proven by the compose smoke
+      test). Branch protection on `main` is a repo setting — enable it in
+      GitHub once the first PR lands
 
 **Exit criteria**
 
-1. `docker compose up` brings the existing app up end-to-end
-2. CI green on a PR
-3. No secrets in the working tree
-4. Timezone test passes
+1. 🟡 `docker compose up` brings the existing app up end-to-end — built and
+   statically verified; the first real boot happens in CI (the `integration` job)
+2. 🟡 CI green on a PR — workflows are in place; the first green run needs a push
+3. ✅ No secrets in the working tree
+4. ⬜ Timezone test passes — waiting on the `Clock` bean + Testcontainers task
 
 ---
 
@@ -241,13 +251,16 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 **DevOps**
 
-- [ ] CD: on tag `v*` → build + push images to GHCR with layer cache
-- [ ] Deploy to VPS over SSH (`compose pull && up -d`), rolling restart
-- [ ] Domain + **TLS** (Caddy automatic certs, or nginx + certbot)
-- [ ] Actuator `/actuator/health` wired into compose healthcheck **and** the deploy gate
+- [x] CD: on tag `v*` → build + push images to GHCR with layer cache (`release.yml`)
+- [x] Deploy to VPS over SSH (`compose pull && up -d`), rolling restart
+      (`deploy.yml`, gated on the healthcheck; needs the DEPLOY_* secrets)
+- [ ] Domain + **TLS** (Caddy automatic certs, or nginx + certbot) — documented
+      in `docs/DEVOPS.md` §6, not automated yet
+- [x] Actuator `/actuator/health` wired into compose healthcheck **and** the deploy gate
 - [ ] Nightly `mysqldump` → object storage + **a scheduled restore test**
 - [ ] Sentry (frontend + backend)
-- [ ] Static asset caching: long `Cache-Control` on hashed files, no-cache on `index.html`
+- [x] Static asset caching: `Cache-Control` on HTML/`sw.js`/assets in nginx
+      (short TTL until filenames are content-hashed — P2/P3)
 
 **Exit criteria**
 
@@ -276,7 +289,7 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 - [ ] Grafana dashboards — instrument **product metrics**: DAU, quests/day, XP/day, streak histogram, level-up funnel
 - [ ] Uptime Kuma (off-box) → alerts to Discord/Telegram
-- [ ] Rate limiting at nginx (`limit_req`) on `/api/quests/*/log`
+- [x] Rate limiting at nginx (`limit_req`) on `/api/quests/*/log` — done early
 - [ ] Core Web Vitals budget in CI
 - [ ] Alerting on backup failure and disk >80%
 
@@ -375,8 +388,8 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 | **XP curve mistuned** | Dead product or broken economy | Config tables + ledger-derived state → recompute freely |
 | **Novelty cliff (~week 4)** | Users churn at week 5–6 | Gamify the *training*, not the checkbox; macro loop (levels/ranks/seasons) must carry past week 6 |
 | **Cheating via the API** | Leaderboards meaningless | Server-authoritative XP, plausibility bounds, rate limits |
-| **Java 26 / Spring Boot 4.1.0** | CI or runtime pulls fail | **Verify Maven + JRE base images exist for the exact version before designing the pipeline** |
-| **Committed credential** | Account/database compromise | Rotate immediately; assume `sphy2323` is burned |
+| **Java 26 / Spring Boot 4.1.0** | CI or runtime pulls fail | ✅ Closed — `maven:3.9-eclipse-temurin-26` and `eclipse-temurin:26-jre-noble` verified to exist on Docker Hub |
+| **Committed credential** | Account/database compromise | Removed from the tree; still in git history — rotate the real password, treat `sphy2323` as burned |
 | **Two devs, one schema, no migrations** | Merge hell, lost data | Flyway from commit #1 (D8) |
 | **Framework indecision** | Mid-project rewrite | Decide D10 in P0, not P2 |
 
@@ -396,6 +409,6 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 ## 12. Immediate next step
 
-**P0, starting with DevOps foundations:** Dockerfiles + compose + profiles + nginx + Flyway on a branch, ending in a `docker compose up` that brings the *existing* app up end-to-end.
-
-Self-contained, immediately useful to both lanes, and everything else sits on top of it.
+**P0 DevOps is done.** The next task is the P0 fullstack lane: BCrypt + JWT
+auth, DTOs with validation, and the D10 frontend-framework decision.
+Everything from P1 onward sits on top of that.

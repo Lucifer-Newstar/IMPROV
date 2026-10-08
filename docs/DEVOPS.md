@@ -111,6 +111,8 @@ needs no code awareness of its environment.
 | `DB_POOL_SIZE` | no | `20` in prod | Hikari `maximumPoolSize` |
 | `SPRING_PROFILES_ACTIVE` | no | `dev` | `prod` in containers |
 | `HTTP_PORT` | no | `8080` | Host port for the web container |
+| `API_IMAGE` | no | `improv-api:local` | Image tag for the api service — `deploy.yml` overrides it with the GHCR image |
+| `WEB_IMAGE` | no | `improv-web:local` | Image tag for the web service — `deploy.yml` overrides it with the GHCR image |
 | `SERVER_PORT` | no | `8080` | API container port |
 | `JAVA_OPTS` | no | see `.env.example` | JVM flags |
 | `TZ` | no | `UTC` | Keep UTC; user timezones live in the DB |
@@ -175,12 +177,9 @@ location /actuator/health {
 The `integration` job is the one that matters. It's the difference between "it
 compiles" and "it runs".
 
-**Known red-ish step:** the proxy check deliberately accepts a 500 from
-`/api/Users/login`, because the backend currently answers a bad login with
-HTTP 500 instead of 401 (tracked P0 bug in
-[`REFERENCE_ANALYSIS.md` §4.1`](./REFERENCE_ANALYSIS.md)). The step only fails
-on 502/504/000 — i.e. when nginx genuinely can't reach the API. Tighten it to
-expect `401` once that bug is fixed.
+The proxy check asserts a bad login answers **401** — the auth error contract
+fixed in P0. It fails on anything else, including 502/504, which would mean
+nginx genuinely can't reach the API.
 
 ### `release.yml` — tags
 
@@ -309,11 +308,12 @@ never update that Play Store listing again).
 
 **P0 / P1 remaining**
 
-- [ ] Rotate the leaked MySQL password
-- [ ] Delete `@CrossOrigin(origins = "*")` from the controller (nginx made it redundant)
-- [ ] Fix the 500→401 auth bug, then tighten the CI proxy assertion
+- [ ] Rotate the leaked MySQL password on any real database (it is out of the
+      tree but still in git history — treat `sphy2323` as burned)
+- [ ] BCrypt + JWT auth, DTOs, `@Valid` (fullstack lane — see
+      [`PHASE_PLAN.md`](./PHASE_PLAN.md) P0)
 - [ ] Add Testcontainers + an injected `Clock` bean; test quest-day boundaries across ≥3 timezones
-- [ ] Branch protection on `main` requiring CI to pass
+- [ ] Branch protection on `main` requiring CI to pass (a GitHub repo setting)
 - [ ] Backups + restore test
 - [ ] Sentry (backend + frontend)
 

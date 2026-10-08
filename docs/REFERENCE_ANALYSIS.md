@@ -111,46 +111,49 @@ All achievable with **CSS + SVG**. No 3D, no external assets required.
 
 ---
 
-## 4. Our codebase: current flaws
+## 4. Our codebase: flaws found in the audit
 
-Audited from source. Separate from the design flaws above.
+Audited from source, October 2026, against the original code. Separate from
+the design flaws above. **The Status column shows where each one stands now** —
+the functional bugs and the critical response-contract issues are fixed; the
+structural work (BCrypt, JWT, DTOs, validation) is P0/P1.
 
 ### 4.1 Critical
 
-| Flaw | File | Detail |
-|---|---|---|
-| **Plaintext passwords, returned to client** | `service.java`, `Controller.java` | `findByUsernameAndPassword(...)` compares raw strings; `/login` and `/register` both serialise the full `User` entity — **including the password field** |
-| **Auth failure returns HTTP 500** | `service.java` | `orElseThrow(() -> new RuntimeException(...))` — a wrong password is not a server error |
-| **Credential committed to git** | `application.properties` | `spring.datasource.password=sphy2323`, with `root` as the DB user |
-| **No unique constraint on username/email** | `User.java` | Duplicate accounts possible |
-| **`mvn test` cannot pass in CI** | `ApApplicationTests.java` | Bare `@SpringBootTest` + JPA needs a live MySQL at `127.0.0.1:3306`. No test DB, no H2, no Testcontainers |
+| Flaw | File | Detail | Status |
+|---|---|---|---|
+| **Plaintext passwords, returned to client** | `service.java`, `Controller.java` | `findByUsernameAndPassword(...)` compares raw strings; `/login` and `/register` both serialise the full `User` entity — **including the password field** | 🟡 Leak **fixed** (`@JsonProperty(WRITE_ONLY)`); plaintext *storage* remains — P0/P1 (BCrypt) |
+| **Auth failure returns HTTP 500** | `service.java` | `orElseThrow(() -> new RuntimeException(...))` — a wrong password is not a server error | ✅ Fixed — now 401 (`ResponseStatusException`) |
+| **Credential committed to git** | `application.properties` | `spring.datasource.password=sphy2323`, with `root` as the DB user | 🟡 Removed from the tree; still in git history — rotate, treat as burned |
+| **No unique constraint on username/email** | `User.java` | Duplicate accounts possible | 🟡 Username unique in the V1 Flyway migration; email deliberately not yet (optional field) |
+| **`mvn test` cannot pass in CI** | `ApApplicationTests.java` | Bare `@SpringBootTest` + JPA needs a live MySQL at `127.0.0.1:3306`. No test DB, no H2, no Testcontainers | ✅ Fixed — tests run on in-memory H2 |
 
 ### 4.2 Functional bugs
 
-| Flaw | Detail |
-|---|---|
-| **Login redirects to `workout-homepage.html.html`** | `LoginPage.js` — double extension; broken navigation right after login |
-| **Deep link silently ignored** | `workout-homepage.js` navigates to `exercises-detail.html?muscle=chest`, but `exercises-detail.js` never reads the query string. User lands on "Select a Muscle Group" — the click appears to do nothing |
-| **Confirm-password never validated** | Present in `RegistrationPage.html`, absent from `RegistrationPage.js` |
-| **`gender` throws on null** | `document.querySelector("input[name='gender']:checked").value` — throws if no radio chosen; registration dies silently |
-| **Height/weight type mismatch** | Inputs allow decimals (`step="0.1"`), backend binds to `Long`. `68.5` → deserialisation failure → generic "Registration failed" |
-| **No error handling on login** | No `try/catch` around the `fetch`. Backend down = button does nothing, silently |
-| **No auth state anywhere** | Nothing stored on login; homepage shows a hardcoded "Guest Athlete". The homepage is publicly reachable |
+| Flaw | Detail | Status |
+|---|---|---|
+| **Login redirects to `workout-homepage.html.html`** | `LoginPage.js` — double extension; broken navigation right after login | ✅ Fixed |
+| **Deep link silently ignored** | `workout-homepage.js` navigates to `exercises-detail.html?muscle=chest`, but `exercises-detail.js` never reads the query string. User lands on "Select a Muscle Group" — the click appears to do nothing | ✅ Fixed — `?muscle=` is honoured on load |
+| **Confirm-password never validated** | Present in `RegistrationPage.html`, absent from `RegistrationPage.js` | ✅ Fixed |
+| **`gender` throws on null** | `document.querySelector("input[name='gender']:checked").value` — throws if no radio chosen; registration dies silently | ✅ Fixed — absent gender is tolerated |
+| **Height/weight type mismatch** | Inputs allow decimals (`step="0.1"`), backend binds to `Long`. `68.5` → deserialisation failure → generic "Registration failed" | ✅ Fixed — truncated client-side |
+| **No error handling on login** | No `try/catch` around the `fetch`. Backend down = button does nothing, silently | ✅ Fixed — rejections surface an alert |
+| **No auth state anywhere** | Nothing stored on login; homepage shows a hardcoded "Guest Athlete". The homepage is publicly reachable | ⏳ P1/P2 — needs the JWT work; the homepage also stops overwriting the profile name with the workout category |
 
 ### 4.3 Quality / hygiene
 
-| Flaw | Detail |
-|---|---|
-| `innerHTML` with unescaped data | `createExerciseCard()` interpolates `exercise.*` directly — XSS vector once data comes from an API |
-| Fake loading state | `displayExercises()` runs `setTimeout(..., 500)` to simulate an API that doesn't exist |
-| Duplicated CSS | The same `:root` token block copy-pasted across 4 stylesheets |
-| Debris in the repo | `New Text Document.txt` ("testgit"), empty `readme.md`, a `.webp` loose in a source folder, a commit titled `...` |
-| `.project` committed | While `Backend/ap/.gitignore` explicitly excludes `.project` |
-| No root `.gitignore`, no root README | — |
-| CORS `origins = "*"` | Symptom of no reverse proxy |
-| `show-sql=true` left on | In the only config file present |
-| Zero validation annotations | No `@Valid`, no `@NotBlank`, no length checks |
-| Java 26 / Spring Boot 4.1.0 | Unverified base-image and runner support — a CI risk before a runtime risk |
+| Flaw | Detail | Status |
+|---|---|---|
+| `innerHTML` with unescaped data | `createExerciseCard()` interpolates `exercise.*` directly — XSS vector once data comes from an API | ⚠️ Data is local-only today; escape when API data lands (P3) |
+| Fake loading state | `displayExercises()` runs `setTimeout(..., 500)` to simulate an API that doesn't exist | ✅ Removed — renders immediately |
+| Duplicated CSS | The same `:root` token block copy-pasted across 4 stylesheets | ⏳ P2 design-system pass |
+| Debris in the repo | `New Text Document.txt` ("testgit"), empty `readme.md`, a `.webp` loose in a source folder, a commit titled `...` | ✅ `New Text Document.txt`, empty `readme.md` and `Backend/.project` removed (the `.webp` avatar is referenced — kept) |
+| `.project` committed | While `Backend/ap/.gitignore` explicitly excludes `.project` | ✅ Removed |
+| No root `.gitignore`, no root README | — | ✅ Added |
+| CORS `origins = "*"` | Symptom of no reverse proxy | ✅ Removed — single origin via nginx |
+| `show-sql=true` left on | In the only config file present | ✅ Moved to the `dev` profile |
+| Zero validation annotations | No `@Valid`, no `@NotBlank`, no length checks | ⏳ P1 |
+| Java 26 / Spring Boot 4.1.0 | Unverified base-image and runner support — a CI risk before a runtime risk | ✅ Verified — base images exist on Docker Hub |
 
 ---
 
@@ -234,6 +237,9 @@ Two of six are decoration. **The four that work all change what the user does ne
 **Not safe:** character names, lifted UI art or icons, and third-party branding.
 
 **IMPROV uses an original theme.** No lifted assets, no licensed names, and no screenshots or art from the reference app committed to this repo.
+
+Full attribution for everything studied and depended on:
+[`CREDITS.md`](./CREDITS.md).
 
 ---
 
