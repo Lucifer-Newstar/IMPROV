@@ -1,5 +1,6 @@
 package wo.ap;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,5 +23,9 @@ public class User {
     private String gender;
     private Long height;
     private Long weight;
+
+    // Accepted on register/login requests, never serialised back out.
+    // Returning it leaked the stored password in every API response.
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 }
