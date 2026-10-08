@@ -62,7 +62,7 @@ jobs:
         working-directory: "Frontend/Login Page"
         run: |
           set -e
-          for f in LoginPage.html RegistrationPage.html workout-homepage.html \
+          for f in index.html LoginPage.html RegistrationPage.html workout-homepage.html \
                    exercises-detail.html manifest.webmanifest sw.js config.js; do
             test -f "$f" || { echo "::error file=Frontend/Login Page/$f::missing"; exit 1; }
           done
@@ -173,19 +173,14 @@ jobs:
 
       - name: nginx must proxy /api to the backend
         run: |
-          # NOTE: the backend currently answers a bad login with HTTP 500
-          # (RuntimeException in service.java). That is a tracked P0 bug. This
-          # step only asserts the *proxy* works — a 502/504 would mean nginx
-          # could not reach the API at all.
+          # A bad login must answer 401 — the auth error contract fixed in P0.
+          # A 502/504 would mean nginx could not reach the API at all.
           code=$(curl -s -o /tmp/api.out -w '%{http_code}' \
             -X POST http://localhost:8080/api/Users/login \
             -H 'Content-Type: application/json' -d '{"username":"ci","password":"ci"}')
           echo "POST /api/Users/login -> $code"
           cat /tmp/api.out || true
-          case "$code" in
-            502|504|000) echo "::error::nginx could not reach the API"; exit 1 ;;
-          esac
-          echo "proxy reachable"
+          [ "$code" = "401" ] || { echo "::error::expected 401 for a bad login, got $code"; exit 1; }
 
       - name: Dump logs on failure
         if: failure()
