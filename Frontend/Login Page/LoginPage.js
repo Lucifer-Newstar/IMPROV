@@ -22,10 +22,13 @@ async function handleLogin() {
             })
         });
 
-        if (!response.ok) {
-            // The backend currently answers a bad login with 500 rather than
-            // 401 (tracked P0 bug), so don't assert on the exact status here.
+        if (response.status === 401) {
             alert("Wrong username or password!");
+            return;
+        }
+
+        if (!response.ok) {
+            alert("Login failed. Please try again.");
             return;
         }
 

@@ -22,7 +22,8 @@
 
   var NATIVE_ORIGINS = [
     'capacitor://localhost',   // Capacitor iOS
-    'http://localhost',        // Capacitor Android
+    'https://localhost',       // Capacitor Android (androidScheme: "https")
+    'http://localhost',        // Capacitor Android (cleartext scheme, dev only)
     'tauri://localhost',       // Tauri (macOS / Linux)
     'https://tauri.localhost'  // Tauri (Windows)
   ];
