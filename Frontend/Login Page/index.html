@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMPROV — Gamified Fitness Trainer</title>
+  <meta name="description" content="IMPROV — a gamified workout tracker. Track training, earn XP, level up, rank up.">
+  <meta name="theme-color" content="#090909">
+  <meta name="color-scheme" content="dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <!-- No-JS fallback; the script below is the fast path. -->
+  <meta http-equiv="refresh" content="0; url=LoginPage.html">
+</head>
+<body>
+  <p>Loading <a href="LoginPage.html">IMPROV — Gamified Fitness Trainer</a>&hellip;</p>
+  <script>
+    // Entry-point shim. Three things load this file as the app's entry:
+    //   * nginx serves it for `/` (the `index` directive)
+    //   * Capacitor loads webDir/index.html in the Android/iOS WebView
+    //     (the CLI refuses to sync without it)
+    //   * Tauri loads frontendDist/index.html in the desktop webview
+    // The real app starts at LoginPage.html. The query string is preserved so
+    // deep links (?muscle=chest) and the PWA start_url (/?source=pwa) survive.
+    window.location.replace('LoginPage.html' + window.location.search);
+  </script>
+</body>
+</html>
