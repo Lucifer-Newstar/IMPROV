@@ -4,7 +4,9 @@ name: Android build
 #
 # Signing: a release build needs a keystore. Until you create one, this
 # workflow produces an *unsigned* release artifact and a debug APK — both
-# installable for testing. See docs/MOBILE_DESKTOP.md.
+# installable for testing. The workflow appends a signing block to
+# app/build.gradle that reads the ANDROID_KEYSTORE_* secrets, so no manual
+# gradle editing is needed. See docs/MOBILE_DESKTOP.md.
 #
 # Required secrets once you have a keystore:
 #   ANDROID_KEYSTORE_BASE64   base64 -w0 release.keystore
@@ -80,15 +82,44 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # The generated build.gradle has a release block that reads these
-          # properties. Missing properties simply skip signing, so the build
-          # still succeeds without a keystore.
+          # Write the keystore coordinates where Gradle can read them...
           {
             echo "IMPROV_KEYSTORE=$KEYSTORE_PATH"
             echo "IMPROV_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
             echo "IMPROV_KEY_ALIAS=$KEY_ALIAS"
             echo "IMPROV_KEY_PASSWORD=$KEY_PASSWORD"
           } >> gradle.properties
+
+          # ...and append a signing block that reads them. The Capacitor
+          # template ships app/build.gradle WITHOUT a signing block, so
+          # without this the properties would be written and silently
+          # ignored. With no properties the release stays unsigned (the
+          # documented default).
+          if ! grep -q IMPROV_KEYSTORE app/build.gradle; then
+            cat >> app/build.gradle <<'GRADLE'
+
+          // --- CI: release signing (see .github/workflows/android.yml) ---
+          android {
+              signingConfigs {
+                  release {
+                      if (project.hasProperty('IMPROV_KEYSTORE')) {
+                          storeFile file(project.property('IMPROV_KEYSTORE'))
+                          storePassword project.property('IMPROV_KEYSTORE_PASSWORD')
+                          keyAlias project.property('IMPROV_KEY_ALIAS')
+                          keyPassword project.property('IMPROV_KEY_PASSWORD')
+                      }
+                  }
+              }
+              buildTypes {
+                  release {
+                      if (project.hasProperty('IMPROV_KEYSTORE')) {
+                          signingConfig signingConfigs.release
+                      }
+                  }
+              }
+          }
+          GRADLE
+          fi
 
       - name: Assemble debug APK
         working-directory: Frontend/android
