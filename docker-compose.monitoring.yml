@@ -1,0 +1,41 @@
+# IMPROV — optional monitoring stack.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+#
+#   Uptime Kuma  -> http://localhost:3001
+#                   (first run: create an account, then add a monitor for
+#                    http://web:80/healthz — it is on the internal network)
+#   Grafana      -> http://localhost:3000
+#                   (admin / GRAFANA_ADMIN_PASSWORD; the Prometheus datasource
+#                    is pre-provisioned and points at the API's
+#                    /actuator/prometheus on the internal network)
+#
+# The API exposes /actuator/prometheus internally only — nginx never routes
+# /actuator. If this host is public, put both ports behind your reverse proxy
+# or bind them to 127.0.0.1.
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+    networks: [backend]
+
+  grafana:
+    image: grafana/grafana:11
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required - set it in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks: [backend]
+
+volumes:
+  kuma-data:
+  grafana-data:

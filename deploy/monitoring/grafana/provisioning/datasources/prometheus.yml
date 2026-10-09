@@ -1,0 +1,11 @@
+# Grafana datasource provisioning — Prometheus scraping the IMPROV API.
+# The API serves /actuator/prometheus on the internal compose network only.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://api:8080/actuator/prometheus
+    isDefault: true
+    editable: false
