@@ -122,7 +122,7 @@ structural work (BCrypt, JWT, DTOs, validation) is P0/P1.
 
 | Flaw | File | Detail | Status |
 |---|---|---|---|
-| **Plaintext passwords, returned to client** | `service.java`, `Controller.java` | `findByUsernameAndPassword(...)` compares raw strings; `/login` and `/register` both serialise the full `User` entity — **including the password field** | 🟡 Leak **fixed** (`@JsonProperty(WRITE_ONLY)`); plaintext *storage* remains — P0/P1 (BCrypt) |
+| **Plaintext passwords, returned to client** | `service.java`, `Controller.java` | `findByUsernameAndPassword(...)` compares raw strings; `/login` and `/register` both serialise the full `User` entity — **including the password field** | ✅ Fixed — BCrypt-hashed at rest, `UserProfile` DTOs out, `@JsonProperty(WRITE_ONLY)` on the entity |
 | **Auth failure returns HTTP 500** | `service.java` | `orElseThrow(() -> new RuntimeException(...))` — a wrong password is not a server error | ✅ Fixed — now 401 (`ResponseStatusException`) |
 | **Credential committed to git** | `application.properties` | `spring.datasource.password=sphy2323`, with `root` as the DB user | 🟡 Removed from the tree; still in git history — rotate, treat as burned |
 | **No unique constraint on username/email** | `User.java` | Duplicate accounts possible | 🟡 Username unique in the V1 Flyway migration; email deliberately not yet (optional field) |
@@ -138,7 +138,7 @@ structural work (BCrypt, JWT, DTOs, validation) is P0/P1.
 | **`gender` throws on null** | `document.querySelector("input[name='gender']:checked").value` — throws if no radio chosen; registration dies silently | ✅ Fixed — absent gender is tolerated |
 | **Height/weight type mismatch** | Inputs allow decimals (`step="0.1"`), backend binds to `Long`. `68.5` → deserialisation failure → generic "Registration failed" | ✅ Fixed — truncated client-side |
 | **No error handling on login** | No `try/catch` around the `fetch`. Backend down = button does nothing, silently | ✅ Fixed — rejections surface an alert |
-| **No auth state anywhere** | Nothing stored on login; homepage shows a hardcoded "Guest Athlete". The homepage is publicly reachable | ⏳ P1/P2 — needs the JWT work; the homepage also stops overwriting the profile name with the workout category |
+| **No auth state anywhere** | Nothing stored on login; homepage shows a hardcoded "Guest Athlete". The homepage is publicly reachable | ✅ Fixed — JWT session in httpOnly cookies; every page shows the real profile and gates on 401 |
 
 ### 4.3 Quality / hygiene
 
@@ -146,13 +146,13 @@ structural work (BCrypt, JWT, DTOs, validation) is P0/P1.
 |---|---|---|
 | `innerHTML` with unescaped data | `createExerciseCard()` interpolates `exercise.*` directly — XSS vector once data comes from an API | ⚠️ Data is local-only today; escape when API data lands (P3) |
 | Fake loading state | `displayExercises()` runs `setTimeout(..., 500)` to simulate an API that doesn't exist | ✅ Removed — renders immediately |
-| Duplicated CSS | The same `:root` token block copy-pasted across 4 stylesheets | ⏳ P2 design-system pass |
+| Duplicated CSS | The same `:root` token block copy-pasted across 4 stylesheets | ✅ Fixed — single `theme.css` token set + shared components |
 | Debris in the repo | `New Text Document.txt` ("testgit"), empty `readme.md`, a `.webp` loose in a source folder, a commit titled `...` | ✅ `New Text Document.txt`, empty `readme.md` and `Backend/.project` removed (the `.webp` avatar is referenced — kept) |
 | `.project` committed | While `Backend/ap/.gitignore` explicitly excludes `.project` | ✅ Removed |
 | No root `.gitignore`, no root README | — | ✅ Added |
 | CORS `origins = "*"` | Symptom of no reverse proxy | ✅ Removed — single origin via nginx |
 | `show-sql=true` left on | In the only config file present | ✅ Moved to the `dev` profile |
-| Zero validation annotations | No `@Valid`, no `@NotBlank`, no length checks | ⏳ P1 |
+| Zero validation annotations | No `@Valid`, no `@NotBlank`, no length checks | ✅ Fixed — `@Valid` DTOs on register/login/quest-log |
 | Java 26 / Spring Boot 4.1.0 | Unverified base-image and runner support — a CI risk before a runtime risk | ✅ Verified — base images exist on Docker Hub |
 
 ---

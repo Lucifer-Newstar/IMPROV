@@ -4,7 +4,7 @@
 
 **Runs as a web app, an installable PWA, an Android app, an iOS app, and a desktop app for Windows / macOS / Linux — from one codebase.**
 
-> **Status: 🚧 pre-alpha.** The backend is a demo slice — authentication only. The progression engine (XP, quests, streaks, ranks) is specified and scheduled, not yet built. The P0 DevOps lane is complete: containers, CI/CD, PWA and native packaging are in place, and the stack runs end-to-end with one command. See [`docs/PHASE_PLAN.md`](docs/PHASE_PLAN.md).
+> **Status: 🚧 pre-alpha — the core loop is live.** Registration and login (JWT, BCrypt), daily quests with tap-to-log, XP, levels, the E→S rank ladder, streaks and analytics are implemented, unit-tested (19 tests) and proven end-to-end in CI. P0 and P1 are done and the P2 screens are built. Real training (weight/reps/RPE) is P3. See [`docs/PHASE_PLAN.md`](docs/PHASE_PLAN.md).
 
 ---
 
@@ -22,28 +22,33 @@ Full reasoning in [`docs/REFERENCE_ANALYSIS.md`](docs/REFERENCE_ANALYSIS.md).
 
 ---
 
-## Planned features
+## What works now
 
-**Core loop**
-- Daily quests with incremental tap-to-log (5 / 10 / 20)
-- XP ledger → levels → rank ladder (E → S) with unlock milestones
-- Streaks with a calendar and timeline view, plus rest-day tokens
-- Daily reset countdown, weekly challenges, seasons
-
-**Real training** *(the differentiator)*
-- Workout sessions: exercises, sets, weight, reps, RPE
-- **XP computed from load** — sets × reps × weight × RPE, server-authoritative
-- Auto-detected personal records, surfaced as loot
-- Volume analytics per muscle group, framed as a "System diagnostic"
-- Estimated 1RM and strength curves
-
-**Social** *(the gap in the category)*
-- Friends and weekly leaderboards
-- Cooperative guild bosses — boss HP = the guild's collective volume
+**The core loop**
+- Register and log in — BCrypt-hashed passwords, JWT access + refresh tokens
+  in httpOnly `SameSite=Strict` cookies (the browser carries them; JavaScript
+  never sees them)
+- Daily quests generated from your level, with a deterministic daily rotation
+- Tap-to-log (5 / 10 / 20) or exact entry; one-shot completion for workouts
+- XP → levels → the E→S rank ladder, with a daily soft cap and rank multipliers
+- Streaks derived from your daily summaries, in your timezone
+- Home (hunter card + quest board), Analytics, Streak and Rank screens
+- Exercise library with muscle-group deep links
 
 **Platform**
-- Web / PWA-first: no install, any device, installable, offline app shell
-- Android, iOS and desktop builds from the same code
+- Web / PWA-first: installable, offline app shell
+- Android, iOS and desktop builds from the same codebase (Capacitor + Tauri)
+- One-command stack: Docker Compose with healthchecks, Flyway, nginx proxy
+- CI: build, 19 unit tests, frontend checks, and an end-to-end smoke test
+  that registers a user, completes a quest and asserts the XP landed
+
+**What's next (P3+)**
+
+- **Real training** *(the differentiator)*: workout sessions with weight,
+  reps and RPE — XP computed from load, auto-detected PRs, volume analytics
+  per muscle group
+- **Social** *(the gap in the category)*: friends, weekly leaderboards,
+  cooperative guild bosses
 
 ---
 
@@ -51,7 +56,7 @@ Full reasoning in [`docs/REFERENCE_ANALYSIS.md`](docs/REFERENCE_ANALYSIS.md).
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 26, Spring Boot 4, Spring Data JPA, Flyway |
+| Backend | Java 26, Spring Boot 4, Spring Security (JWT + BCrypt), Spring Data JPA, Flyway |
 | Database | MySQL 8.4 |
 | Frontend | HTML / CSS / JavaScript *(framework decision pending)* |
 | Packaging | Capacitor (Android/iOS), Tauri (desktop), service worker (PWA) |
@@ -178,9 +183,9 @@ between "it compiles" and "it runs".
 
 | Phase | Focus | Outcome |
 |---|---|---|
-| **P0** | Foundations & contracts | Repo builds, tests and runs end-to-end; no secrets in git |
-| **P1** | Core loop | XP, quests, streaks, levels and ranks working via API |
-| **P2** | Screens | **MVP — live HTTPS URL with a working core loop** |
+| **P0** | Foundations & contracts | ✅ Done — repo builds, tests and runs end-to-end; no secrets in git |
+| **P1** | Core loop | ✅ Done — XP, quests, streaks, levels and ranks working via API |
+| **P2** | Screens | 🟡 Built — MVP screens + CI end-to-end proof; the live HTTPS deploy is the remaining step |
 | **P3** | Real training | Weight/reps/RPE tracking and load-based XP |
 | **P4** | Social & seasons | Friends, leaderboards, guild bosses, rank resets |
 
@@ -202,22 +207,27 @@ Full task breakdown, exit criteria and the risk register:
 
 ## ⚠️ Security notice
 
-Fixed since the audit (details in
+Since the audit (details in
 [`docs/REFERENCE_ANALYSIS.md` §4](docs/REFERENCE_ANALYSIS.md)):
 
-- ✅ The password field is no longer serialised in API responses
-- ✅ A bad login returns **401**, not 500; a duplicate username returns 409
-- ✅ The `@CrossOrigin(origins = "*")` wildcard is gone — one origin, no CORS
+- ✅ Passwords are **BCrypt-hashed** at rest and never serialised in responses
+- ✅ Auth is stateless JWT (access + refresh) in httpOnly `SameSite=Strict`
+  cookies — no server-side sessions, no tokens in JavaScript
+- ✅ Bad login → 401, duplicate username → 409, validation → 400 with RFC 7807
+  problem documents — never a 500
 - ✅ The committed database credential is out of the tree (it remains in git
   history — treat it as burned and rotate it)
 
-**Still open (P0/P1, fullstack lane):**
+**Still open:**
 
-- Passwords are still stored and compared in **plaintext** — BCrypt + JWT is
-  the next task
-- There is no session or token yet — every endpoint is currently public
+- Refresh tokens cannot be revoked before they expire (stateless JWT — the
+  accepted trade-off, documented in [`docs/DEVOPS.md`](docs/DEVOPS.md))
+- The old `sphy2323` MySQL password must be rotated on any real database
+- Rate limiting is at nginx (10 r/s on the quest-log endpoint); the API itself
+  has no per-user limit yet
 
-The backend is **not safe to expose publicly** until those land.
+The backend is **not safe to expose publicly** until the credential is rotated
+and a real `JWT_SECRET` is set.
 
 ---
 

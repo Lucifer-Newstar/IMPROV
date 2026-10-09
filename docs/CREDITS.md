@@ -162,7 +162,9 @@ Built entirely on other people's excellent work.
 |---|---|---|
 | [Spring Boot](https://spring.io/projects/spring-boot) | Apache-2.0 | Application framework |
 | [Spring Data JPA](https://spring.io/projects/spring-data-jpa) | Apache-2.0 | Persistence |
-| [Spring Security](https://spring.io/projects/spring-security) | Apache-2.0 | *(planned — auth)* |
+| [Spring Security](https://spring.io/projects/spring-security) | Apache-2.0 | Auth filter chain, BCrypt password hashing |
+| [jjwt](https://github.com/jwtk/jjwt) | Apache-2.0 | JWT signing and verification |
+| [Micrometer](https://micrometer.io/) | Apache-2.0 | Metrics (Prometheus registry) |
 | [Flyway](https://flywaydb.org/) | Apache-2.0 | Versioned schema migrations |
 | [Hibernate ORM](https://hibernate.org/orm/) | LGPL-2.1 | JPA implementation |
 | [HikariCP](https://github.com/brettwooldridge/HikariCP) | Apache-2.0 | Connection pool |
@@ -189,12 +191,13 @@ Built entirely on other people's excellent work.
 | [Eclipse Temurin](https://adoptium.net/) | GPL-2.0 w/ Classpath Exception | JDK runtime |
 | [Maven](https://maven.apache.org/) | Apache-2.0 | Build tool |
 | [GitHub Actions](https://github.com/features/actions) | — | CI/CD |
+| [Grafana](https://grafana.com/) | AGPL-3.0 | Dashboards (monitoring stack) |
+| [Uptime Kuma](https://github.com/louislam/uptime-kuma) | MIT | Uptime monitoring (monitoring stack) |
 
 ### Planned (scheduled in the phase plan)
 
-[Grafana](https://grafana.com/), [Prometheus](https://prometheus.io/),
-[Caddy](https://caddyserver.com/), [Uptime Kuma](https://github.com/louislam/uptime-kuma),
-[Sentry](https://sentry.io/), [k6](https://k6.io/), [Redis](https://redis.io/).
+[Caddy](https://caddyserver.com/), [Sentry](https://sentry.io/),
+[k6](https://k6.io/), [Redis](https://redis.io/).
 
 ---
 

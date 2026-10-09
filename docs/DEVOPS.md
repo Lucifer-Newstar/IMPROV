@@ -14,13 +14,14 @@ How to build, run, test and deploy IMPROV.
 | Containerisation | ✅ Dockerfiles for api + web, compose stack with healthchecks |
 | Reverse proxy | ✅ nginx serves static + proxies `/api`, single origin, rate limiting |
 | Config & secrets | ✅ Profiles, env vars, `.env.example`, `.gitignore`, no secrets in git |
-| Schema management | ✅ Flyway baseline, `ddl-auto=validate` |
-| CI | ✅ Build + test, frontend static checks, compose smoke test |
+| Schema management | ✅ Flyway: users baseline + progression schema, seeded config (curve, ranks, templates) |
+| Auth | ✅ JWT access + refresh in httpOnly `SameSite=Strict` cookies, BCrypt passwords |
+| CI | ✅ Build + 19 unit tests, frontend static checks, compose smoke test, e2e core loop |
 | CD | ✅ Image publishing to GHCR on tag; SSH deploy workflow (needs secrets) |
 | Desktop packaging | ✅ Tauri config + cross-platform release workflow |
 | Mobile packaging | ✅ Capacitor config + Android/iOS workflows |
-| Observability | ⏳ Scheduled — P2 (Grafana, uptime, alerting) |
-| Backups | ⏳ Scheduled — P1 |
+| Observability | ✅ Prometheus metrics + Grafana/Uptime Kuma compose (dashboards to build) |
+| Backups | ✅ `deploy/backup.sh` + CI-proven restore test |
 
 ---
 
@@ -116,6 +117,28 @@ needs no code awareness of its environment.
 | `SERVER_PORT` | no | `8080` | API container port |
 | `JAVA_OPTS` | no | see `.env.example` | JVM flags |
 | `TZ` | no | `UTC` | Keep UTC; user timezones live in the DB |
+| `JWT_SECRET` | prod | *(dev default, loudly logged)* | HS256 signing secret for the auth cookies — `openssl rand -base64 48` |
+| `AUTH_COOKIE_SECURE` | no | `true` | Secure flag on the auth cookies; `false` only for plain-http testing |
+| `GRAFANA_ADMIN_PASSWORD` | monitoring | *(none)* | Grafana admin password (required with the monitoring stack) |
+| `GRAFANA_PORT` | no | `3000` | Host port for Grafana |
+| `RETENTION_DAYS` | no | `30` | Local backup retention (`deploy/backup.sh`) |
+| `S3_BUCKET` | no | *(unset)* | If set (and aws CLI present), backups copy to `s3://$S3_BUCKET/db/` |
+
+### Authentication
+
+Login sets two httpOnly, `SameSite=Strict` cookies: `improv_access` (JWT, 15
+min) and `improv_refresh` (JWT, 7 days). The browser attaches them
+automatically; JavaScript never sees a token. Because the cookies are
+SameSite=Strict, cross-site requests never carry them — that is why CSRF is
+disabled in the security config (the cookie policy *is* the CSRF protection).
+
+When the access token expires, the frontend calls `POST /api/auth/refresh`
+once and retries the original request; if that fails too, it redirects to the
+login page. Refresh tokens cannot be revoked before they expire — the accepted
+trade-off of stateless JWT, and the reason the access token is short.
+
+Passwords are BCrypt-hashed. `JWT_SECRET` is required in production — the app
+refuses to start without it.
 
 ---
 
@@ -250,27 +273,59 @@ for one host. It is *not* a backup strategy — see §7.
 
 ---
 
-## 7. Backups
+## 7. Backups & monitoring
 
-**Not implemented yet. Scheduled for P1.** When you build it:
+### Backups
+
+`deploy/backup.sh` dumps the `db` service (single transaction, routines and
+triggers), gzips it into `./backups`, prunes anything older than
+`RETENTION_DAYS` (default 30) and — if the aws CLI is present and `S3_BUCKET`
+is set — copies it off-site.
 
 ```bash
-# Nightly dump to object storage
-docker compose exec -T db sh -c \
-  'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -u root --single-transaction --routines --triggers "$MYSQL_DATABASE"' \
-  | gzip | aws s3 cp - "s3://improv-backups/db/$(date -u +%F).sql.gz"
-
-# Retention
-aws s3 ls s3://improv-backups/db/ | ... # delete > 30 days
+# on the host, via cron:
+0 3 * * *  cd /opt/improv && ./deploy/backup.sh >> /var/log/improv-backup.log 2>&1
 ```
 
-**The part people skip:** a scheduled **restore test**. Pull yesterday's dump
-into a scratch container and assert `SELECT COUNT(*) FROM users` returns a
-sane number. An untested backup is a rumour.
+**The part people skip:** a scheduled **restore test** — and it is not
+skipped here. `.github/workflows/backup.yml` runs nightly, restores the dump
+into a scratch MySQL container and asserts the data survived. An untested
+backup is a rumour.
+
+Restore by hand:
+
+```bash
+gunzip < backups/improv-YYYYMMDD-HHMMSS.sql.gz \
+  | docker compose exec -T db mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"
+```
 
 Also back up: the production `.env`, and any signing keystores (see
 [`MOBILE_DESKTOP.md`](./MOBILE_DESKTOP.md) — losing a keystore means you can
 never update that Play Store listing again).
+
+### Monitoring
+
+`docker-compose.monitoring.yml` adds two services to the stack:
+
+| Service | URL | What |
+|---|---|---|
+| Grafana | <http://localhost:3000> | Dashboards over Prometheus |
+| Uptime Kuma | <http://localhost:3001> | Uptime monitoring + alerts |
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+Grafana ships with the Prometheus datasource pre-provisioned
+(`deploy/monitoring/grafana/provisioning/`) pointing at the API's
+`/actuator/prometheus` on the internal network. The API also emits custom
+counters — `improv.users.registered`, `improv.quests.completed`,
+`improv.xp.awarded` — which are the product metrics to chart first
+(quests/day, XP/day, registrations). Building those dashboards in the Grafana
+UI is the remaining task.
+
+`/actuator/prometheus` is **internal only**: nginx never routes `/actuator`,
+and the api container publishes no ports in the base compose. Do not expose it.
 
 ---
 
@@ -306,20 +361,16 @@ never update that Play Store listing again).
 
 ## 10. Next steps
 
-**P0 / P1 remaining**
+**Remaining**
 
 - [ ] Rotate the leaked MySQL password on any real database (it is out of the
       tree but still in git history — treat `sphy2323` as burned)
-- [ ] BCrypt + JWT auth, DTOs, `@Valid` (fullstack lane — see
-      [`PHASE_PLAN.md`](./PHASE_PLAN.md) P0)
-- [ ] Add Testcontainers + an injected `Clock` bean; test quest-day boundaries across ≥3 timezones
+- [ ] Set a real `JWT_SECRET` in the production `.env` (dev boots with a
+      loudly logged insecure default)
 - [ ] Branch protection on `main` requiring CI to pass (a GitHub repo setting)
-- [ ] Backups + restore test
 - [ ] Sentry (backend + frontend)
-
-**P2+**
-
-- [ ] Grafana dashboards — instrument DAU, quests/day, XP/day, streak histogram, level-up funnel
-- [ ] Uptime Kuma, alerts to Discord/Telegram
-- [ ] Core Web Vitals budget in CI
+- [ ] Grafana dashboards — the datasource is provisioned; chart
+      `improv.quests.completed`, `improv.xp.awarded`, `improv.users.registered`
+- [ ] Alerting on backup failure and disk >80% (needs a host agent)
+- [ ] Core Web Vitals budget in CI (needs a browser runner)
 - [ ] Ephemeral preview environment per PR *(the highest-visibility item on this list)*

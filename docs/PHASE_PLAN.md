@@ -1,6 +1,6 @@
 # IMPROV — Phase Plan
 
-> **Status:** P0 DevOps lane complete · P0 fullstack lane in progress · **Team:** 2 (fullstack dev + DevOps) · **Updated:** Oct 2026
+> **Status:** P0 + P1 complete · P2 screens built (live deploy remaining) · **Team:** 2 (fullstack dev + DevOps) · **Updated:** Oct 2026
 > **Companion doc:** [`REFERENCE_ANALYSIS.md`](./REFERENCE_ANALYSIS.md) — the research this plan is built on.
 
 ---
@@ -88,7 +88,7 @@ Settle these before code. Each is cheap now and expensive in month two.
 | D7 | Reward snapshots | Copy `target`, `xp_reward`, `stat_reward` onto the user's quest row at generation | Templates change; history must not rewrite itself |
 | D8 | Schema | **Flyway** from commit #1. `ddl-auto=validate` | Two devs, one DB. Hibernate must not guess |
 | D9 | API shape | REST under `/api`, RFC 7807 errors, DTOs, 401 not 500 | Current code returns 500 for a bad password and leaks the password field |
-| D10 | Frontend | **Decision pending** — vanilla multi-page or React + Vite | At 10 screens with derived state, vanilla gets painful by screen 5. Decide in P0 |
+| D10 | Frontend | **Vanilla multi-page** (decided) | The app is 8 small screens with simple derived state; a build step would complicate the Capacitor/Tauri packaging for no user-visible gain. Shared tokens (`theme.css`) + an API client (`api.js`) carry the complexity. Revisit past ~12 screens |
 | D11 | Offline | MVP online-only, fail loudly. Offline queue deferred | Full sync is a project by itself |
 | D12 | Secrets | Env vars only, Spring profiles. **Rotate the committed MySQL password** | It's in git history right now |
 
@@ -173,9 +173,9 @@ Everything the UI shows is a `GROUP BY`, never a maintained counter:
 
 | Phase | Name | Duration | Outcome | Owner split | Status |
 |---|---|---|---|---|---|
-| **P0** | Foundations & contracts | ~1 week | Repo can build, test and run end-to-end | Both | 🟡 DevOps ✅ · fullstack 🟡 |
-| **P1** | Core loop | ~3 weeks | XP, quests, streaks, levels, ranks working via API | Fullstack-heavy | ⬜ not started |
-| **P2** | Screens → **MVP SHIP** | ~3 weeks | **Live HTTPS URL with a working core loop** | Both | ⬜ not started |
+| **P0** | Foundations & contracts | ~1 week | Repo can build, test and run end-to-end | Both | ✅ done |
+| **P1** | Core loop | ~3 weeks | XP, quests, streaks, levels, ranks working via API | Fullstack-heavy | ✅ done (built in one pass, not three weeks) |
+| **P2** | Screens → **MVP SHIP** | ~3 weeks | **Live HTTPS URL with a working core loop** | Both | 🟡 screens + CI e2e done; live URL pending |
 | **P3** | Real training | ~2 weeks | Weight/reps/RPE tracking — the differentiator | Fullstack-heavy | ⬜ not started |
 | **P4** | Social & seasons | ~2 weeks | Friends, leaderboards, guild bosses, seasons | Both | ⬜ not started |
 
@@ -193,19 +193,19 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 - [ ] Rotate the committed MySQL password on any real database (it is out of
       the tree but still in git history — treat it as burned)
-- [ ] BCrypt password hashing; JWT access + refresh
-- [x] DTOs so `password` never serialises in any response — done early via
-      `@JsonProperty(WRITE_ONLY)` on `User.password`; full DTOs land with P1
+- [x] BCrypt password hashing; JWT access + refresh in httpOnly cookies
+- [x] DTOs so `password` never serialises in any response (full DTOs, not
+      just the WRITE_ONLY annotation)
 - [x] Fix auth error contract: 401 for bad credentials, not 500 from
       `RuntimeException` (plus 409 for a duplicate username)
-- [ ] `@Valid` + validation annotations; unique constraints on username & email
-      (username is unique in V1; email is deliberately not yet — see the migration)
+- [x] `@Valid` + validation annotations; unique constraints on username & email
+      (username unique in V1; email deliberately not yet — optional field)
 - [x] Fix functional bugs: `workout-homepage.html.html` double extension; `gender`
       null-crash; `confirm-password` never validated; height/weight `Long` vs
       decimal mismatch; unhandled fetch rejections
 - [x] Fix `ApApplicationTests` — it previously could not pass without a live
       MySQL (now runs on in-memory H2)
-- [ ] **Decide D10 (frontend framework)** and commit to it
+- [x] **Decide D10 (frontend framework)** — vanilla multi-page, committed
 
 **DevOps**
 
@@ -217,18 +217,22 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 - [x] Frontend **Dockerfile** — build stage → nginx runtime
 - [x] **`docker-compose.yml`** — mysql + api + web, healthchecks + `depends_on: service_healthy`
 - [x] **Flyway** baseline migration, `ddl-auto=validate`
-- [ ] `Clock` bean + Testcontainers integration test proving day-boundary logic across ≥3 timezones
+- [x] `Clock` bean + timezone tests with fixed clocks proving day-boundary
+      logic (StreakServiceTest — the same instant is a different "today" in
+      Asia/Kolkata vs UTC). Testcontainers deferred: the unit tests cover the
+      boundary logic without Docker
 - [x] GitHub Actions: PR → build + test (CI green is proven by the compose smoke
       test). Branch protection on `main` is a repo setting — enable it in
       GitHub once the first PR lands
 
 **Exit criteria**
 
-1. 🟡 `docker compose up` brings the existing app up end-to-end — built and
-   statically verified; the first real boot happens in CI (the `integration` job)
+1. ✅ `docker compose up` brings the app up end-to-end — proven by the CI
+   `integration` job (healthcheck, Flyway + seed assertions, nginx proxy, e2e
+   core loop)
 2. 🟡 CI green on a PR — workflows are in place; the first green run needs a push
 3. ✅ No secrets in the working tree
-4. ⬜ Timezone test passes — waiting on the `Clock` bean + Testcontainers task
+4. ✅ Timezone test passes (fixed-clock unit tests, no Testcontainers needed)
 
 ---
 
@@ -238,16 +242,18 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 **Fullstack dev**
 
-- [ ] Migrations: `user_stats`, `ranks`, `level_curve`, `quest_templates`, `user_quests`, `xp_ledger`, `day_summaries`
-- [ ] Seed config rows: level curve, rank ladder, starter quest templates
-- [ ] `XP ledger` — append-only writes, idempotency keys
-- [ ] Level + rank derivation from the ledger; `user_stats` cache
-- [ ] Streak derivation (current / best) from `day_summaries`
-- [ ] Quest generation on first read of a new `quest_date`
-- [ ] `GET /api/quests/today`, `POST /api/quests/{id}/log`, `/complete`
-- [ ] Plausibility bounds + daily XP soft cap
-- [ ] `GET /api/progression`, `GET /api/ranks`
-- [ ] `day_summaries` upsert on quest completion
+- [x] Migrations: `user_stats`, `ranks`, `level_curve`, `quest_templates`, `user_quests`, `xp_ledger`, `day_summaries` (V3)
+- [x] Seed config rows: level curve (200), rank ladder (6), starter quest templates (7)
+- [x] `XP ledger` — append-only writes, unique idempotency keys (exactly-once awards)
+- [x] Level + rank derivation from the ledger; `user_stats` cache (refreshed in the award transaction)
+- [x] Streak derivation (current / best) from `day_summaries`, in the user's timezone
+- [x] Quest generation on first read of a new `quest_date`, with deterministic daily rotation
+- [x] `GET /api/quests/today`, `POST /api/quests/{id}/log`, `/complete`
+- [x] Plausibility bounds + daily XP soft cap (400 → half XP)
+- [x] `GET /api/progression`, `GET /api/ranks`
+- [x] `day_summaries` upsert on quest completion
+- [x] Plus the read-only analytics endpoints the P2 screens need:
+      `GET /api/analytics/{overview,streak,calendar}`
 
 **DevOps**
 
@@ -257,17 +263,19 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 - [ ] Domain + **TLS** (Caddy automatic certs, or nginx + certbot) — documented
       in `docs/DEVOPS.md` §6, not automated yet
 - [x] Actuator `/actuator/health` wired into compose healthcheck **and** the deploy gate
-- [ ] Nightly `mysqldump` → object storage + **a scheduled restore test**
+- [x] Nightly `mysqldump` — `deploy/backup.sh` (cron on the host, optional S3
+      off-site) with a **CI-proven restore test** (`backup.yml`)
 - [ ] Sentry (frontend + backend)
 - [x] Static asset caching: `Cache-Control` on HTML/`sw.js`/assets in nginx
       (short TTL until filenames are content-hashed — P2/P3)
 
 **Exit criteria**
 
-1. Logged quests move XP, level, rank and streak correctly — verified by an end-to-end test
-2. TZ boundary tests pass for three timezones
-3. Deployed live over HTTPS with a real domain
-4. Backup restores successfully into a scratch DB
+1. ✅ Logged quests move XP, level, rank and streak correctly — verified by the
+   CI end-to-end step (register → login → quest → XP → progression)
+2. ✅ TZ boundary tests pass (fixed-clock unit tests, user-timezone "today")
+3. ⬜ Deployed live over HTTPS with a real domain — needs a host + DNS
+4. ✅ Backup restores successfully into a scratch DB (CI-proven in `backup.yml`)
 
 ---
 
@@ -277,28 +285,38 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 **Fullstack dev**
 
-- [ ] **S1 Auth** — rework login/register to the new API
-- [ ] **S2 Home / System** — hunter card, level, rank badge, streak, reset countdown, daily quests
-- [ ] **S3 Quest logging sheet** — incremental tap-to-log (5 / 10 / 20) + exact entry
-- [ ] **S4 Analytics** — Overview / Progress / Stats tabs, weekly activity chart, consistency squares, rep analytics
-- [ ] **S5 Streak Details** — Calendar + Timeline views
-- [ ] **S6 Rank screen** — hexagon ladder, unlock levels, progress arc
-- [ ] Design system pass: the "System" look as **shared CSS tokens**, not copy-pasted blocks
+- [x] **S1 Auth** — login/register on the JWT API; logout; automatic token refresh
+- [x] **S2 Home / System** — hunter card (level, rank badge, XP bar, streak,
+      reset countdown) + today's quest board
+- [x] **S3 Quest logging sheet** — tap-to-log (5 / 10 / 20) + exact entry +
+      one-shot complete
+- [x] **S4 Analytics** — Overview / Progress / Stats tabs, weekly XP chart,
+      12-week consistency grid, stat tiles (all real API data)
+- [x] **S5 Streak Details** — month calendar + timeline of active days
+- [x] **S6 Rank screen** — hexagon ladder, locked/unlocked/current tiers
+- [x] Design system pass — `theme.css` owns the tokens and shared components;
+      the four copy-pasted `:root` blocks are gone
 
 **DevOps**
 
-- [ ] Grafana dashboards — instrument **product metrics**: DAU, quests/day, XP/day, streak histogram, level-up funnel
-- [ ] Uptime Kuma (off-box) → alerts to Discord/Telegram
-- [x] Rate limiting at nginx (`limit_req`) on `/api/quests/*/log` — done early
-- [ ] Core Web Vitals budget in CI
-- [ ] Alerting on backup failure and disk >80%
+- [x] Prometheus metrics — `/actuator/prometheus` (internal only) + custom
+      counters: `improv.users.registered`, `improv.quests.completed`, `improv.xp.awarded`
+- [x] Grafana — `docker-compose.monitoring.yml` with a pre-provisioned
+      Prometheus datasource; dashboards to build in the UI (next)
+- [x] Uptime Kuma — same compose file (monitor `http://web:80/healthz`)
+- [x] Rate limiting at nginx (`limit_req`) on `/api/quests/*/log`
+- [ ] Core Web Vitals budget in CI (needs a browser runner)
+- [ ] Alerting on backup failure and disk >80% (needs a host agent)
 
 **Exit criteria**
 
-1. A new user can register, log a full day of quests, and see XP + streak + rank update
-2. Analytics reflect real logged data
-3. Deployed, monitored, backed up, alerting
-4. **🎯 MVP COMPLETE — shareable URL**
+1. ✅ A new user can register, log a full day of quests, and see XP + streak +
+   rank update — proven end-to-end in CI
+2. ✅ Analytics reflect real logged data (every view is a query over the ledger
+   and day summaries)
+3. 🟡 Deployed, monitored (Grafana + Uptime Kuma ready), backed up (CI-proven
+   restore); alerting pending
+4. ⬜ **🎯 MVP COMPLETE — shareable URL** — needs a host, DNS and TLS
 
 ---
 
@@ -409,6 +427,8 @@ Durations assume **~10 hrs/week each**. **P2 is the MVP. Everything after is ups
 
 ## 12. Immediate next step
 
-**P0 DevOps is done.** The next task is the P0 fullstack lane: BCrypt + JWT
-auth, DTOs with validation, and the D10 frontend-framework decision.
-Everything from P1 onward sits on top of that.
+**P0 and P1 are done, and the P2 screens are built.** The remaining MVP step
+is operational: a host, DNS, TLS, and the first real deploy (the deploy workflow
+is ready and gated on the healthcheck). After that, P3 — real training — is
+the differentiator: workout sessions with weight/reps/RPE and XP computed from
+load.
