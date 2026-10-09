@@ -18,6 +18,11 @@ spring:
     hibernate:
       ddl-auto: validate
 
+improv:
+  jwt:
+    # No default: the app fails fast at startup if JWT_SECRET is unset.
+    secret: ${JWT_SECRET}
+
 logging:
   level:
     root: INFO
@@ -32,4 +37,4 @@ management:
     web:
       exposure:
         # Ingress must restrict this. See docs/DEVOPS.md.
-        include: health,info
+        include: health,info,prometheus

@@ -7,6 +7,11 @@ spring:
   profiles:
     default: dev
 
+  # RFC 7807 problem documents for every API error (D9).
+  mvc:
+    problemdetails:
+      enabled: true
+
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/workoutapp}
     username: ${DB_USERNAME:improv}
@@ -52,7 +57,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # prometheus is for the internal monitoring stack only — never route
+        # /actuator through the public proxy (see docs/DEVOPS.md).
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: never
@@ -67,3 +74,23 @@ management:
 logging:
   level:
     root: INFO
+
+# ---------------------------------------------------------------------------
+# IMPROV application config
+# ---------------------------------------------------------------------------
+improv:
+  jwt:
+    # HS256 needs at least 32 bytes. dev ships an insecure default (loudly
+    # logged at startup); prod has NO default — the app refuses to start
+    # without JWT_SECRET.
+    secret: ${JWT_SECRET:dev-only-insecure-secret-do-not-use-in-prod-0123456789abcdef}
+    access-ttl: 15m
+    refresh-ttl: 168h
+  auth:
+    # Secure cookies require https; the dev profile overrides this to false.
+    cookie-secure: ${AUTH_COOKIE_SECURE:true}
+    cookie-same-site: Strict
+  quests:
+    # Daily XP soft cap: awards past this are halved (anti-abuse, spec §6.5).
+    daily-soft-cap: 400
+    max-quests-per-day: 5

@@ -21,3 +21,8 @@ management:
     web:
       exposure:
         include: health,info,env,beans,configprops
+
+improv:
+  auth:
+    # Dev runs over plain http on localhost, where Secure cookies are rejected.
+    cookie-secure: false
