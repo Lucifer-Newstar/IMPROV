@@ -3,68 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IMPROV Workout Homepage</title>
+  <title>IMPROV — Home</title>
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="workout-homepage.css">
-    <meta name="description" content="IMPROV — a gamified workout tracker. Track training, earn XP, level up, rank up.">
-    <meta name="theme-color" content="#090909">
-    <meta name="color-scheme" content="dark">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96.png">
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="IMPROV">
-    <meta name="mobile-web-app-capable" content="yes">
-    <script src="config.js"></script>
+  <meta name="description" content="IMPROV — a gamified workout tracker. Track training, earn XP, level up, rank up.">
+  <meta name="theme-color" content="#090909">
+  <meta name="color-scheme" content="dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IMPROV">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="page-shell">
     <header class="topbar">
-      <a class="brand" href="#">IMPROV</a>
+      <a class="brand" href="workout-homepage.html">IMPROV</a>
       <nav class="topnav">
-        <a href="#">Home</a>
-        <a href="#">Workouts</a>
-        <a href="#">Profile</a>
+        <a href="workout-homepage.html" class="active">Home</a>
+        <a href="exercises-detail.html">Exercises</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="streak.html">Streak</a>
+        <a href="rank.html">Rank</a>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Log out</button>
       </nav>
     </header>
 
-    <main class="hero-layout">
-      <section class="hero-card">
-        <p class="eyebrow">Welcome back</p>
-        <h1>Track your next workout with style and focus.</h1>
-        <p class="hero-copy">Choose a muscle group, launch your training plan, and stay locked in with your personal dashboard.</p>
-
-        <div class="hero-actions">
-          <button class="primary-action" type="button" onclick="startWorkout()">Start Workout</button>
+    <main class="hunter-grid">
+      <section class="card hunter-card" aria-label="Hunter card">
+        <div class="hunter-top">
+          <img class="avatar" src="thumb-350-378112.webp" alt="Athlete avatar">
+          <div>
+            <h1 class="hunter-name" id="hunter-name">Guest Athlete</h1>
+            <p class="hunter-level" id="hunter-level">Level 1 · Rank E</p>
+          </div>
+          <span class="rank-badge" id="rank-badge" data-rank="E">E</span>
         </div>
 
-        <div class="category-grid">
-          <button class="category-pill" type="button" onclick="navigateToExercises('chest')">Chest</button>
-          <button class="category-pill" type="button" onclick="navigateToExercises('biceps')">Arms</button>
-          <button class="category-pill" type="button" onclick="navigateToExercises('back')">Back</button>
-          <button class="category-pill" type="button" onclick="navigateToExercises('legs')">Legs</button>
+        <div class="hunter-stats">
+          <div class="hunter-stat"><b id="stat-streak">0</b><span>Day streak</span></div>
+          <div class="hunter-stat"><b id="stat-total-xp">0</b><span>Total XP</span></div>
+          <div class="hunter-stat"><b id="stat-today-xp">0</b><span>XP today</span></div>
+        </div>
+
+        <div class="xp-row">
+          <div class="progress"><span id="xp-bar" style="width: 0%"></span></div>
+          <p id="xp-label">0 / 100 XP to level 2</p>
         </div>
       </section>
 
-      <aside class="plan-card">
-        <div class="plan-header">
-          <span class="plan-badge">Training focus</span>
-          <h2 id="plan-title">Workout Plan</h2>
+      <section class="card quest-board" aria-label="Today's quests">
+        <div class="board-head">
+          <h2>Today's Quests</h2>
+          <span class="reset-countdown" id="reset-countdown">Resets in --:--:--</span>
         </div>
-        <ul id="workout-list" class="workout-list"></ul>
-
-        <div class="profile-panel">
-          <img class="avatar" src="thumb-350-378112.webp" alt="Athlete avatar">
-          <div class="profile-details">
-            <strong id="username-text">Guest Athlete</strong>
-            <span>Let's get stronger today.</span>
-          </div>
+        <div class="quest-list" id="quest-list">
+          <p class="muted">Loading quests…</p>
         </div>
-      </aside>
+      </section>
     </main>
   </div>
 
+  <script src="api.js"></script>
+  <script src="app.js"></script>
   <script src="workout-homepage.js"></script>
   <script src="pwa.js"></script>
 </body>
