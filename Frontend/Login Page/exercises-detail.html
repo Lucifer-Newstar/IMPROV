@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Exercises - IMPROV Workouts</title>
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="exercises-detail.css">
     <meta name="description" content="IMPROV — a gamified workout tracker. Track training, earn XP, level up, rank up.">
     <meta name="theme-color" content="#090909">
@@ -24,8 +25,11 @@
       <a class="brand" href="workout-homepage.html">IMPROV</a>
       <nav class="topnav">
         <a href="workout-homepage.html">Home</a>
-        <a href="#">Workouts</a>
-        <a href="#">Profile</a>
+        <a href="exercises-detail.html" class="active">Exercises</a>
+        <a href="analytics.html">Analytics</a>
+        <a href="streak.html">Streak</a>
+        <a href="rank.html">Rank</a>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Log out</button>
       </nav>
     </header>
 
@@ -71,6 +75,8 @@
     </main>
   </div>
 
+  <script src="api.js"></script>
+  <script src="app.js"></script>
   <script src="exercises-detail.js"></script>
   <script src="pwa.js"></script>
 </body>
