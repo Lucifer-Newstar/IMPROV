@@ -1,9 +1,11 @@
 package wo.ap;
 
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
 
-@Data
-public class LoginRequest {
-    private String username;
-    private String password;
+public record LoginRequest(
+
+        @NotBlank String username,
+
+        @NotBlank String password
+) {
 }
