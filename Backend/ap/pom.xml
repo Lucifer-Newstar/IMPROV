@@ -70,9 +70,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Pinned explicitly: the version Spring Boot manages (1.18.46) predates
+		     JDK 26 support, so its annotation processor silently does nothing and
+		     every Lombok-generated getter/setter is missing at compile time. -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
+			<version>1.18.48</version>
 			<optional>true</optional>
 		</dependency>
 
@@ -98,6 +102,23 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<!-- JDK 23+ no longer runs annotation processors found on the
+					     classpath. Without this, Lombok silently does nothing and
+					     every generated getter/setter is missing at compile time
+					     (the project did not build on its own JDK 26 toolchain). -->
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.48</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
