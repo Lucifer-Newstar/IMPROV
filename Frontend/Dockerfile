@@ -14,7 +14,11 @@ FROM nginx:1.30-alpine AS runtime
 # Our site config replaces the stock one (it also lives inside the http{}
 # block, so limit_req_zone etc. are valid here).
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build "/src/Login Page/" /usr/share/nginx/html/
+# Exec form — REQUIRED for paths containing whitespace (Dockerfile reference).
+# The shell-style quoted form on this line is what broke CI:
+#   failed to process "\"/src/Login": unexpected end of statement while
+#   looking for matching double-quote
+COPY --from=build ["/src/Login Page/", "/usr/share/nginx/html/"]
 
 EXPOSE 80
 
