@@ -4,8 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,8 +21,6 @@ import java.util.Date;
  */
 @Service
 public class JwtService {
-
-    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
     private final SecretKey key;
     private final Duration accessTtl;

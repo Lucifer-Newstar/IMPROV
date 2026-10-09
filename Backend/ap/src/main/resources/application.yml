@@ -80,10 +80,10 @@ logging:
 # ---------------------------------------------------------------------------
 improv:
   jwt:
-    # HS256 needs at least 32 bytes. dev ships an insecure default (loudly
-    # logged at startup); prod has NO default — the app refuses to start
-    # without JWT_SECRET.
-    secret: ${JWT_SECRET:dev-only-insecure-secret-do-not-use-in-prod-0123456789abcdef}
+    # HS256 needs at least 32 bytes. There is NO default in any profile — the
+    # secret always comes from the environment, and docker-compose enforces it
+    # (${JWT_SECRET:?}). A missing secret fails startup loudly, by design.
+    secret: ${JWT_SECRET}
     access-ttl: 15m
     refresh-ttl: 168h
   auth:

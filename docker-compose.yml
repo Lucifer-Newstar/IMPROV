@@ -44,6 +44,10 @@ services:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME:-workoutapp}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-improv}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      # HS256 signing secret for the auth cookies. There is no default in any
+      # Spring profile — compose refuses to start without it. Generate with:
+      #   openssl rand -base64 48
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - copy .env.example to .env and set it}
       # Auth cookies are Secure by default; CI (plain http) overrides this.
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}

@@ -18,11 +18,6 @@ spring:
     hibernate:
       ddl-auto: validate
 
-improv:
-  jwt:
-    # No default: the app fails fast at startup if JWT_SECRET is unset.
-    secret: ${JWT_SECRET}
-
 logging:
   level:
     root: INFO

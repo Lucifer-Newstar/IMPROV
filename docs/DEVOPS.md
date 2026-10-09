@@ -62,6 +62,7 @@ cd Backend/ap
 export DB_URL='jdbc:mysql://localhost:3306/workoutapp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
 export DB_USERNAME=improv
 export DB_PASSWORD=...
+export JWT_SECRET="$(openssl rand -base64 48)"
 ./mvnw spring-boot:run
 ```
 
@@ -117,7 +118,7 @@ needs no code awareness of its environment.
 | `SERVER_PORT` | no | `8080` | API container port |
 | `JAVA_OPTS` | no | see `.env.example` | JVM flags |
 | `TZ` | no | `UTC` | Keep UTC; user timezones live in the DB |
-| `JWT_SECRET` | prod | *(dev default, loudly logged)* | HS256 signing secret for the auth cookies — `openssl rand -base64 48` |
+| `JWT_SECRET` | yes | *(none)* | HS256 signing secret for the auth cookies — `openssl rand -base64 48`; no default in any profile, compose refuses to start without it |
 | `AUTH_COOKIE_SECURE` | no | `true` | Secure flag on the auth cookies; `false` only for plain-http testing |
 | `GRAFANA_ADMIN_PASSWORD` | monitoring | *(none)* | Grafana admin password (required with the monitoring stack) |
 | `GRAFANA_PORT` | no | `3000` | Host port for Grafana |
@@ -137,8 +138,10 @@ once and retries the original request; if that fails too, it redirects to the
 login page. Refresh tokens cannot be revoked before they expire — the accepted
 trade-off of stateless JWT, and the reason the access token is short.
 
-Passwords are BCrypt-hashed. `JWT_SECRET` is required in production — the app
-refuses to start without it.
+Passwords are BCrypt-hashed. `JWT_SECRET` is required **everywhere** — there
+is no default in any profile; `docker-compose.yml` enforces it with
+`${JWT_SECRET:?}` and the app itself fails fast on a missing or too-short
+secret.
 
 ---
 
@@ -365,8 +368,8 @@ and the api container publishes no ports in the base compose. Do not expose it.
 
 - [ ] Rotate the leaked MySQL password on any real database (it is out of the
       tree but still in git history — treat `sphy2323` as burned)
-- [ ] Set a real `JWT_SECRET` in the production `.env` (dev boots with a
-      loudly logged insecure default)
+- [ ] Generate a strong `JWT_SECRET` for the production `.env` (compose now
+      refuses to start without one — there is no default anywhere)
 - [ ] Branch protection on `main` requiring CI to pass (a GitHub repo setting)
 - [ ] Sentry (backend + frontend)
 - [ ] Grafana dashboards — the datasource is provisioned; chart
