@@ -44,6 +44,8 @@ services:
       DB_URL: jdbc:mysql://db:3306/${DB_NAME:-workoutapp}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       DB_USERNAME: ${DB_USERNAME:-improv}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      # Auth cookies are Secure by default; CI (plain http) overrides this.
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError}
       TZ: ${TZ:-UTC}
     depends_on:

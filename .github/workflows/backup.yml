@@ -1,0 +1,108 @@
+name: Backup & restore test
+
+# Proves the database backup works end to end: boots the stack, writes a
+# backup with deploy/backup.sh, restores it into a scratch MySQL container and
+# asserts the data survived. The dump is uploaded as an artifact (30 days).
+#
+# On the production host, run deploy/backup.sh from cron instead — this
+# workflow exists to prove the script and the restore path, not to be the
+# backup itself.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup-and-restore:
+    name: Backup, restore, verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Write CI .env
+        run: |
+          cat > .env <<'EOF'
+          DB_NAME=workoutapp
+          DB_USERNAME=improv
+          DB_PASSWORD=ci-only-not-a-real-secret
+          DB_ROOT_PASSWORD=ci-only-not-a-real-secret
+          HTTP_PORT=8080
+          TZ=UTC
+          AUTH_COOKIE_SECURE=false
+          EOF
+
+      - name: Boot the database and API (dev override publishes the API on 8081)
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build db api
+
+      - name: Wait for the API (Flyway must have applied the migrations)
+        run: |
+          set -e
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/actuator/health || echo 000)
+            echo "[$i] api health: $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "::error::timed out waiting for the api"
+          exit 1
+
+      - name: Register a user (so the backup has real data)
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8081/api/Users/register \
+            -H 'Content-Type: application/json' \
+            -d '{"firstname":"Backup","lastname":"Test","username":"backuptest","password":"ci-password-123","timezone":"UTC"}')
+          echo "register -> $code"
+          [ "$code" = "201" ] || exit 1
+
+      - name: Write a backup with deploy/backup.sh
+        run: |
+          BACKUP_DIR=/tmp/improv-backups bash deploy/backup.sh
+          ls -la /tmp/improv-backups
+
+      - name: Restore into a scratch MySQL and verify
+        run: |
+          set -e
+          PW=restore-test-pw
+          docker run -d --name improv-restore-test \
+            --network improv_backend \
+            -e MYSQL_ROOT_PASSWORD="$PW" \
+            -e MYSQL_DATABASE=workoutapp \
+            mysql:8.4
+          for i in $(seq 1 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' improv-restore-test 2>/dev/null || echo starting)
+            echo "[$i] scratch db: $status"
+            [ "$status" = "healthy" ] && break
+            sleep 5
+          done
+          test "$(docker inspect -f '{{.State.Health.Status}}' improv-restore-test)" = "healthy"
+
+          gunzip < /tmp/improv-backups/improv-*.sql.gz \
+            | docker exec -i improv-restore-test mysql -u root -p"$PW" workoutapp
+
+          count=$(docker exec improv-restore-test mysql -u root -p"$PW" -N -B workoutapp \
+            -e "SELECT COUNT(*) FROM users WHERE username='backuptest';")
+          echo "restored users matching 'backuptest': $count"
+          [ "$count" -eq 1 ] || { echo "::error::restore lost the data"; docker rm -f improv-restore-test; exit 1; }
+          tables=$(docker exec improv-restore-test mysql -u root -p"$PW" -N -B workoutapp \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='workoutapp';")
+          echo "restored tables: $tables"
+          [ "$tables" -ge 9 ] || { echo "::error::expected the full schema"; docker rm -f improv-restore-test; exit 1; }
+          docker rm -f improv-restore-test
+          echo "restore test OK"
+
+      - name: Upload the dump as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: improv-db-backup
+          path: /tmp/improv-backups/*.sql.gz
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans

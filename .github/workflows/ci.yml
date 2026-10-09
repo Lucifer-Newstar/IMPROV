@@ -62,8 +62,9 @@ jobs:
         working-directory: "Frontend/Login Page"
         run: |
           set -e
-          for f in index.html LoginPage.html RegistrationPage.html workout-homepage.html \
-                   exercises-detail.html manifest.webmanifest sw.js config.js; do
+          for f in index.html theme.css api.js app.js LoginPage.html RegistrationPage.html \
+                   workout-homepage.html exercises-detail.html analytics.html streak.html rank.html \
+                   manifest.webmanifest sw.js config.js; do
             test -f "$f" || { echo "::error file=Frontend/Login Page/$f::missing"; exit 1; }
           done
           echo "app shell OK"
@@ -128,6 +129,7 @@ jobs:
           DB_ROOT_PASSWORD=ci-only-not-a-real-secret
           HTTP_PORT=8080
           TZ=UTC
+          AUTH_COOKIE_SECURE=false
           EOF
 
       - name: Build and start the stack
@@ -147,16 +149,17 @@ jobs:
           echo "::error::timed out waiting for api to become healthy"
           exit 1
 
-      - name: Flyway must have applied the baseline migration
+      - name: Flyway must have applied the migrations and the seed config
         run: |
           set -e
-          docker compose exec -T db mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
-            -e "SELECT version, description, success FROM flyway_schema_history;" \
-          || true
           count=$(docker compose exec -T db mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
-            -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name IN ('users','flyway_schema_history');")
+            -N -B -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name IN ('users','flyway_schema_history','quest_templates','user_quests','xp_ledger','day_summaries','level_curve','ranks','user_stats');")
           echo "expected tables present: $count"
-          [ "$count" -eq 2 ] || { echo "::error::expected users + flyway_schema_history"; exit 1; }
+          [ "$count" -eq 9 ] || { echo "::error::expected 9 tables (users, flyway history, progression schema)"; exit 1; }
+          seeds=$(docker compose exec -T db mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
+            -N -B -e "SELECT (SELECT COUNT(*) FROM level_curve) + (SELECT COUNT(*) FROM ranks) + (SELECT COUNT(*) FROM quest_templates);")
+          echo "seed rows (level_curve + ranks + quest_templates): $seeds"
+          [ "$seeds" -eq 213 ] || { echo "::error::expected 213 seed rows (200 + 6 + 7)"; exit 1; }
         env:
           DB_NAME: workoutapp
           DB_USER: improv
@@ -181,6 +184,67 @@ jobs:
           echo "POST /api/Users/login -> $code"
           cat /tmp/api.out || true
           [ "$code" = "401" ] || { echo "::error::expected 401 for a bad login, got $code"; exit 1; }
+
+      - name: End-to-end — register, log in, complete a quest, earn XP
+        run: |
+          set -e
+          JAR=/tmp/improv-cookies.txt
+          rm -f "$JAR"
+
+          # 1. register
+          code=$(curl -s -o /tmp/reg.json -w '%{http_code}' -X POST http://localhost:8080/api/Users/register \
+            -H 'Content-Type: application/json' \
+            -d '{"firstname":"Ci","lastname":"Runner","username":"cirunner","email":"ci@example.com","password":"ci-password-123","timezone":"UTC"}')
+          echo "register -> $code"
+          [ "$code" = "201" ] || { cat /tmp/reg.json; exit 1; }
+
+          # 2. log in (capture the auth cookies)
+          code=$(curl -s -c "$JAR" -o /tmp/login.json -w '%{http_code}' -X POST http://localhost:8080/api/Users/login \
+            -H 'Content-Type: application/json' -d '{"username":"cirunner","password":"ci-password-123"}')
+          echo "login -> $code"
+          [ "$code" = "200" ] || { cat /tmp/login.json; exit 1; }
+
+          # 3. today's quest board
+          curl -fsS -b "$JAR" http://localhost:8080/api/quests/today -o /tmp/board.json
+          python3 - <<'PY'
+          import json
+          board = json.load(open('/tmp/board.json'))
+          quests = board['quests']
+          assert len(quests) >= 1, f"no quests generated: {board}"
+          workout = next((q for q in quests if q['type'] == 'WORKOUT'), None)
+          assert workout is not None, f"no WORKOUT quest in {quests}"
+          open('/tmp/quest-id', 'w').write(str(workout['id']))
+          print("quest board OK:", len(quests), "quests; completing:", workout['name'])
+          PY
+
+          # 4. complete the quest -> XP is awarded
+          QID=$(cat /tmp/quest-id)
+          code=$(curl -s -b "$JAR" -o /tmp/complete.json -w '%{http_code}' -X POST \
+            "http://localhost:8080/api/quests/$QID/complete")
+          echo "complete -> $code"
+          [ "$code" = "200" ] || { cat /tmp/complete.json; exit 1; }
+
+          # 5. progression must show the XP and the level
+          curl -fsS -b "$JAR" http://localhost:8080/api/progression -o /tmp/progression.json
+          python3 - <<'PY'
+          import json
+          p = json.load(open('/tmp/progression.json'))
+          assert p['totalXp'] > 0, f"no XP awarded: {p}"
+          assert p['level'] >= 2, f"expected level >= 2 after 100 XP: {p}"
+          assert p['rank'] == 'E', p
+          print("progression OK: level", p['level'], "| rank", p['rank'], "| totalXp", p['totalXp'])
+          PY
+
+          # 6. the board is idempotent — same quests, no duplicates
+          curl -fsS -b "$JAR" http://localhost:8080/api/quests/today -o /tmp/board2.json
+          python3 - <<'PY'
+          import json
+          a = json.load(open('/tmp/board.json'))['quests']
+          b = json.load(open('/tmp/board2.json'))['quests']
+          assert [q['id'] for q in a] == [q['id'] for q in b], "board changed between reads"
+          print("board idempotent OK:", len(b), "quests")
+          PY
+          echo "end-to-end core loop OK"
 
       - name: Dump logs on failure
         if: failure()
