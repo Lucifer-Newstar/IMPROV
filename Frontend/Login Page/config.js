@@ -51,7 +51,25 @@
     endpoints: {
       login: '/Users/login',
       register: '/Users/register',
-      exercises: '/exercises'
+      refresh: '/auth/refresh',
+      logout: '/auth/logout',
+      me: '/auth/me',
+      questsToday: '/quests/today',
+      questLog: '/quests/{id}/log',
+      questComplete: '/quests/{id}/complete',
+      progression: '/progression',
+      ranks: '/ranks',
+      analyticsOverview: '/analytics/overview',
+      analyticsStreak: '/analytics/streak',
+      analyticsCalendar: '/analytics/calendar'
+    },
+
+    /** Fills {placeholders} in an endpoint template:
+     *  IMPROV.url(IMPROV.endpoints.questLog, { id: 7 }) -> '/quests/7/log' */
+    url: function (template, params) {
+      return template.replace(/\{(\w+)\}/g, function (_, key) {
+        return encodeURIComponent(params[key]);
+      });
     },
 
     version: '0.1.0'

@@ -1,35 +1,6 @@
-:root {
-  --primary-dark: #090909;
-  --primary-red: #c20f19;
-  --accent-red: #ff4f5b;
-  --soft-white: #f6f1ef;
-  --muted: #c5bdbd;
-  --surface: rgba(13, 13, 13, 0.95);
-  --surface-soft: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 79, 91, 0.35);
-  --shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
-}
 
-* {
-  box-sizing: border-box;
-}
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(155deg, #090909 0%, #24070a 45%, #12060a 100%);
-  color: var(--soft-white);
-}
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at top left, rgba(255, 79, 91, 0.18), transparent 26%),
-              radial-gradient(circle at bottom right, rgba(255, 210, 0, 0.09), transparent 18%);
-  pointer-events: none;
-}
 
 .page-shell {
   position: relative;
@@ -273,11 +244,6 @@ body::before {
   margin-bottom: 16px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .loading p {
   color: var(--muted);

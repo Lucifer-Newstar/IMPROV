@@ -1,50 +1,25 @@
-document.getElementById("loginform").addEventListener("submit", function (event) {
+document.getElementById('loginform').addEventListener('submit', function (event) {
     event.preventDefault();
     handleLogin();
 });
 
 async function handleLogin() {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
     const submit = document.querySelector('#loginform input[type="submit"]');
 
     if (submit) { submit.disabled = true; }
 
     try {
-        // Same-origin: nginx proxies /api to the backend. Never hardcode a
-        // host here — see config.js and the CI check that enforces it.
-        const response = await fetch(window.IMPROV.apiBase + window.IMPROV.endpoints.login, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                "username": username,
-                "password": password
-            })
+        // On success the server sets the auth cookies; the response is the
+        // profile. The API client handles errors (401, network) uniformly.
+        await window.improvApi.post(window.IMPROV.endpoints.login, {
+            username: username,
+            password: password
         });
-
-        if (response.status === 401) {
-            alert("Wrong username or password!");
-            return;
-        }
-
-        if (!response.ok) {
-            alert("Login failed. Please try again.");
-            return;
-        }
-
-        const data = await response.json();
-
-        if (data && data.id) {
-            alert("Login Successful!");
-            window.location.href = "workout-homepage.html";
-        } else {
-            alert("Wrong username or password!");
-        }
+        window.location.href = 'workout-homepage.html';
     } catch (error) {
-        // Previously an unhandled fetch rejection meant the button silently
-        // did nothing whenever the backend was down.
-        console.error("Login failed:", error);
-        alert("Could not reach the server. Check your connection and try again.");
+        alert(error.message || 'Login failed. Please try again.');
     } finally {
         if (submit) { submit.disabled = false; }
     }

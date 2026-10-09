@@ -1,37 +1,7 @@
 /* RegistrationPage.css */
-:root {
-    --primary-dark: #0d0d0d;
-    --primary-red: #c20f19;
-    --accent-red: #ff3b4a;
-    --soft-white: #f8f7f6;
-    --shadow-gray: rgba(0, 0, 0, 0.22);
-    --border-gray: #4a4a4a;
-    --muted-gray: #b8b8b8;
-    --highlight: #ffd700;
-    --success: #1fa53d;
-}
 
-* {
-    box-sizing: border-box;
-}
 
-body {
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(160deg, #0d0d0d 0%, #2a0a0f 45%, #1a0106 100%);
-    color: var(--soft-white);
-}
 
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at top left, rgba(255, 59, 74, 0.16), transparent 28%),
-                radial-gradient(circle at bottom right, rgba(255, 215, 0, 0.1), transparent 20%);
-    pointer-events: none;
-}
 
 header {
     text-align: center;
@@ -163,16 +133,6 @@ br {
     margin-bottom: 12px;
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(24px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 
 @media (max-width: 520px) {
     form {
